@@ -122,7 +122,7 @@
   #summary{display:grid;gap:8px}
   .sum-title{font-weight:700;margin-bottom:4px}
   .sum-list{margin:0;padding-left:0;list-style:none;display:grid;gap:3px}
-  .sum-item{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+  .sum-item{display:flex;align-items:center;justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;width:100%}
   .sum-ico{width:16px;height:16px;display:inline-block;vertical-align:middle}
 
   /* Overlay polys */
@@ -148,9 +148,8 @@
 <body>
 <header>
   <div class="paper-chip">Tour: <b id="turnLabel">Joueur</b></div>
+  <div class="paper-chip">Année: <b id="yearLabel">1</b></div>
   <div class="paper-chip">Cycle: <b id="turnCount">1</b></div>
-  <div class="paper-chip">Or Joueur: <b id="gold1">0</b></div>
-  <div class="paper-chip">Or Adversaires: <b id="gold2">0</b></div>
   <div class="controls">
     <button id="endTurn">Finir le tour</button>
     <button id="restart">Recommencer</button>
@@ -214,10 +213,6 @@
   </div>
 </div>
 
-<footer class="paper" style="margin:12px;border-radius:10px">
-  Déplacements: Fermier 3 · Milicien 2 · Soldat 1 — Sloop 3 · Brigantin 2 · Galion 1.
-</footer>
-
 <!-- Start modal -->
 <div id="start" class="modal show">
   <div class="card">
@@ -277,6 +272,7 @@ const CITY_BASE_COST=10, CITY_SCALE=3;
 const SIZE_PRESETS={small:{W:13,H:11},medium:{W:19,H:15},large:{W:25,H:19},huge:{W:33,H:25}};
 
 let W=13,H=11,S=[],selected=null,reach=[],reachTheo=[],turn=1,TOTAL_PLAYERS=2,AI_ALLIED=true,DIFFICULTY=2;
+let YEAR=1;
 let uiLocked=false, turnCount=1;           /* anti-spam + compteur de cycles */
 const gold={};
 const PLAYER_COLORS=[{n:"Émeraude",v:"#1f7a3e"},{n:"Bleu roi",v:"#1e3a8a"},{n:"Violet",v:"#6a1b9a"},{n:"Ambre",v:"#e39a1d"},{n:"Carmin",v:"#c62828"},{n:"Teal",v:"#00897b"}];
@@ -351,6 +347,7 @@ function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
   for(let i=0;i<starts.length;i++){ const o=i+1, p3=starts[i]; cell(p3.x,p3.y).structure='city'; cell(p3.x,p3.y).owner=o; spawnUnit(p3.x,p3.y,{owner:o,type:1,level:1},true); gold[o]=2; }
 
   turn=1; turnCount=1; recalcMoved(false);
+  Year=1;
 }
 function findNearestLandOnly(sx,sy){let best={x:sx,y:sy},bestD=1e9;for(const c of S){if(c.terrain==='land'){const d=Math.abs(c.x-sx)+Math.abs(c.y-sy);if(d<bestD){bestD=d;best={x:c.x,y:c.y};}}}return best;}
 function randomFarLandOnly(points,minD){const candidates=S.filter(c=>(c.terrain==='land')&&c.structure==='none');for(let t=0;t<800;t++){const c=candidates[Math.floor(rand()*candidates.length)];if(!c)break;if(points.every(p=>hexDist(c,p)>=minD))return{x:c.x,y:c.y};}return null;}
@@ -365,22 +362,60 @@ function countSummary(o){const units={1:0,2:0,3:0}, ships={sloop:0,brig:0,galleo
 function iconUnitSmall(t){const s='<svg class="sum-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'; if(t===1)return s+'<path d="M6 3 L6 15"/><path d="M3 7 L9 7"/><path d="M9 4 L9 8"/><path d="M6 15 L6 21"/><path d="M12 14 C12 12, 15 12, 15 14 C15 16, 12 16,12 14" />'+'</svg>'; if(t===2)return s+'<circle cx="12" cy="12" r="5.5"/><path d="M4 20 L20 4" />'+'</svg>'; return s+'<path d="M6 10 C6 6, 18 6, 18 10"/><path d="M6 10 L18 10"/><path d="M12 11 L12 20"/><path d="M9 20 L15 20"/>'+'</svg>'; }
 function iconShipSmall(){return `<svg class="sum-ico" viewBox="0 0 24 24"><path d="M3 16 H21 L18 20 H6 Z" fill="currentColor"/></svg>`;}
 function renderSummary(){
-  const box=document.getElementById('summary'); if(!box)return;
-  const bank=Math.floor(gold[1]||0), inc=income(1), upk=upkeep(1), net=+(inc-upk).toFixed(1);
+  const box=document.getElementById('summary');
+  if(!box) return;
+
+  // Économie
+  const myGold = Math.floor(gold[1]||0);
+
+  let enemiesRows = '';
+  if (TOTAL_PLAYERS===2){
+    const g = Math.floor(gold[2]||0);
+    enemiesRows = `<li class="sum-item"><span>Or ennemi</span><b>${g}</b></li>`;
+  } else {
+    let total=0;
+    for(let o=2;o<=TOTAL_PLAYERS;o++){
+      const g=Math.floor(gold[o]||0); total+=g;
+      enemiesRows += `<li class="sum-item"><span>IA ${o-1}</span><b>${g}</b></li>`;
+    }
+    enemiesRows += `<li class="sum-item"><span><i>Total IA</i></span><b>${total}</b></li>`;
+  }
+
+  const econ = `
+    <div class="sum-title">Économie</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span><b>Or (toi)</b></span><b>${myGold}</b></li>
+      ${enemiesRows}
+    </ul>`;
+
+  // Comptages
   const me=countSummary(1);
-  const army=[{k:1,label:`Fermier: ${me.units[1]} (loyer ${UNITS[1].upkeep} po/u)`},{k:2,label:`Milicien: ${me.units[2]} (loyer ${UNITS[2].upkeep} po/u)`},{k:3,label:`Soldat: ${me.units[3]} (loyer ${UNITS[3].upkeep} po/u)`}].map(u=>`<li class="sum-item">${iconUnitSmall(u.k)} ${u.label}</li>`).join('');
-  const fleet=[{k:'sloop',label:`Sloop: ${me.ships.sloop} (loyer ${SHIPS.sloop.upkeep})`},{k:'brig',label:`Brigantin: ${me.ships.brig} (loyer ${SHIPS.brig.upkeep})`},{k:'galleon',label:`Galion: ${me.ships.galleon} (loyer ${SHIPS.galleon.upkeep})`}].map(s=>`<li class="sum-item">${iconShipSmall()} ${s.label}</li>`).join('');
+  const army = `
+    <div class="sum-title" style="margin-top:6px">Armée</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span><b>Fermier</b></span><b>${me.units[1]}</b></li>
+      <li class="sum-item"><span><b>Milicien</b></span><b>${me.units[2]}</b></li>
+      <li class="sum-item"><span><b>Soldat</b></span><b>${me.units[3]}</b></li>
+    </ul>`;
+
+  const fleet = `
+    <div class="sum-title" style="margin-top:6px">Flotte</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span><b>Sloop</b></span><b>${me.ships.sloop}</b></li>
+      <li class="sum-item"><span><b>Brigantin</b></span><b>${me.ships.brig}</b></li>
+      <li class="sum-item"><span><b>Galion</b></span><b>${me.ships.galleon}</b></li>
+    </ul>`;
+
+  // Fiche rapide PM / Coût / Loyer (rappels)
   const stats = `
-    <div class="statgrid">
-      <div class="stat">Or actuel <b>${bank}</b></div>
-      <div class="stat">Cycle <b>${turnCount}</b></div>
-      <div class="stat">Revenu brut <b>+${inc}</b></div>
-      <div class="stat">Loyer <b>−${upk.toFixed(1)}</b></div>
-      <div class="stat" style="grid-column:1/-1">Net / tour <b>${net>=0?'+':''}${net}</b></div>
-    </div>`;
-  box.innerHTML=`${stats}
-    <div class="sum-title">Armée</div><ul class="sum-list">${army}</ul>
-    <div class="sum-title" style="margin-top:6px">Flotte</div><ul class="sum-list">${fleet}</ul>`;
+    <div class="sum-title" style="margin-top:6px">Unités — PM / Coût / Loyer</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span>Fermier</span><span>${UNITS[1].move} / ${recruitCost(1,1)} / ${UNITS[1].upkeep}</span></li>
+      <li class="sum-item"><span>Milicien</span><span>${UNITS[2].move} / ${recruitCost(2,1)} / ${UNITS[2].upkeep}</span></li>
+      <li class="sum-item"><span>Soldat</span><span>${UNITS[3].move} / ${recruitCost(3,1)} / ${UNITS[3].upkeep}</span></li>
+    </ul>`;
+
+  box.innerHTML = econ + army + fleet + stats;
 }
 
 /* ==================== Règles ==================== */
@@ -711,11 +746,10 @@ function line(s,x1,y1,x2,y2,sw=2){const l=document.createElementNS('http://www.w
 
 /* ==================== HUD & LOG ==================== */
 function updateHUD(){
-  document.getElementById('gold1').textContent=Math.floor(gold[1]||0);
-  let sum=0; for(let o=2;o<=TOTAL_PLAYERS;o++) sum+=Math.floor(gold[o]||0);
-  document.getElementById('gold2').textContent=sum;
-  document.getElementById('turnLabel').textContent=(turn===1?'Joueur':`IA ${turn-1}`);
-  document.getElementById('turnCount').textContent=turnCount;
+  const t=document.getElementById('turnLabel');
+  if(t) t.textContent=(turn===1?'Joueur':`IA ${turn-1}`);
+  const y=document.getElementById('yearLabel');
+  if(y) y.textContent=YEAR;
 }
 function addLog(s,d=null,owner=null){ const e=document.createElement('div'); e.className='entry'; if(owner) e.dataset.owner=owner; e.innerHTML=`<div class="summary">• ${s}</div><div class="detail">${d?d:s}</div>`; e.querySelector('.summary').onclick=()=>e.classList.toggle('open'); logEl.insertAdjacentElement('afterbegin',e); }
 function log(s,o=null){ addLog(s,null,o); }
@@ -861,9 +895,9 @@ function updateActionsPanel(){
   const onCity=myTurn&&sel&&selected.kind==='city'&&sel.structure==='city'&&sel.owner===1;
   const occupied = !!(onCity && (sel.unit || sel.ship));
   const cF = recruitCost(1,1), cM = recruitCost(2,1), cS = recruitCost(3,1);
-  document.getElementById('recFarmer').textContent  = `Recruter Fermier (${cF} or)`;
-  document.getElementById('recMilitia').textContent = `Recruter Milicien (${cM} or)`;
-  document.getElementById('recSoldier').textContent = `Recruter Soldat (${cS} or)`;
+  document.getElementById('recFarmer').textContent  = `Recruter Fermier — PM ${UNITS[1].move} · Loyer ${UNITS[1].upkeep} · Coût ${cF}`;
+  document.getElementById('recMilitia').textContent = `Recruter Milicien — PM ${UNITS[2].move} · Loyer ${UNITS[2].upkeep} · Coût ${cM}`;
+  document.getElementById('recSoldier').textContent = `Recruter Soldat — PM ${UNITS[3].move} · Loyer ${UNITS[3].upkeep} · Coût ${cS}`;
 
   B('recFarmer').disabled  = !(onCity && !occupied && (gold[1]||0)>=cF);
   B('recMilitia').disabled = !(onCity && !occupied && (gold[1]||0)>=cM);
@@ -918,7 +952,7 @@ function endTurn(){
   recalcMoved(false); selected=null;
 
   turn++;
-  if(turn>TOTAL_PLAYERS){ turn=1; turnCount++; }
+  if (turn > TOTAL_PLAYERS) {  turn = 1;  YEAR++;}
 
   applyBankruptcy(turn);
   render(); checkVictory();
