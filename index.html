@@ -40,6 +40,10 @@
   .paper-chip{padding:6px 10px;border-radius:9px;border:1px solid #d7c7ad;background:#fff9;backdrop-filter:blur(2px)}
   .controls{display:flex;gap:8px;align-items:center}
   .controls button{padding:8px 12px;border:1px solid #cdbb98;border-radius:9px;background:#fff9;cursor:pointer;box-shadow:inset 0 1px 0 #fff7}
+  .paper-chip .sub{display:block;font-size:12px;opacity:.8;margin-top:2px}
+  /* Gestion (ex-Résumé) — petites mentions à droite */
+  .sum-item .meta{margin-left:6px;font-size:12px;opacity:.75}
+  .sum-item b{font-weight:800}
 
   /* Layout */
   .layout{display:grid;grid-template-columns:320px 1fr;gap:12px;padding:12px}
@@ -56,8 +60,27 @@
   .paper h3{margin:0 0 8px 0;color:#3b2f20}
 
   #actions{display:grid;gap:6px}
-  #actions button{padding:8px;border-radius:8px;border:1px solid #cdbb98;background:#fff;cursor:pointer;text-align:left}
-  #actions button[disabled]{opacity:.45;cursor:not-allowed}
+  /* Actions — style parchemin */
+  #actions button{
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid #cdbb98;
+  cursor:pointer;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  background:
+    linear-gradient(180deg,#fff9 0 30%, #0000 60%),
+    repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
+    linear-gradient(180deg,#f7e8bf,#f2d793 55%,#e6c377);
+  box-shadow:inset 0 1px 0 #fff7, 0 2px 8px rgba(0,0,0,.08);
+  }   
+  #actions button .title{font-weight:700;color:#3b2f20}
+  #actions button .meta{font-size:12px;opacity:.8;color:#473924}
+  #actions button[disabled]{opacity:.55;cursor:not-allowed;filter:saturate(.8)}
+
 
   /* Journal */
   #log{max-height:240px;overflow:auto}
@@ -362,60 +385,34 @@ function countSummary(o){const units={1:0,2:0,3:0}, ships={sloop:0,brig:0,galleo
 function iconUnitSmall(t){const s='<svg class="sum-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'; if(t===1)return s+'<path d="M6 3 L6 15"/><path d="M3 7 L9 7"/><path d="M9 4 L9 8"/><path d="M6 15 L6 21"/><path d="M12 14 C12 12, 15 12, 15 14 C15 16, 12 16,12 14" />'+'</svg>'; if(t===2)return s+'<circle cx="12" cy="12" r="5.5"/><path d="M4 20 L20 4" />'+'</svg>'; return s+'<path d="M6 10 C6 6, 18 6, 18 10"/><path d="M6 10 L18 10"/><path d="M12 11 L12 20"/><path d="M9 20 L15 20"/>'+'</svg>'; }
 function iconShipSmall(){return `<svg class="sum-ico" viewBox="0 0 24 24"><path d="M3 16 H21 L18 20 H6 Z" fill="currentColor"/></svg>`;}
 function renderSummary(){
-  const box=document.getElementById('summary');
-  if(!box) return;
-
-  // Économie
-  const myGold = Math.floor(gold[1]||0);
-
-  let enemiesRows = '';
-  if (TOTAL_PLAYERS===2){
-    const g = Math.floor(gold[2]||0);
-    enemiesRows = `<li class="sum-item"><span>Or ennemi</span><b>${g}</b></li>`;
-  } else {
-    let total=0;
-    for(let o=2;o<=TOTAL_PLAYERS;o++){
-      const g=Math.floor(gold[o]||0); total+=g;
-      enemiesRows += `<li class="sum-item"><span>IA ${o-1}</span><b>${g}</b></li>`;
-    }
-    enemiesRows += `<li class="sum-item"><span><i>Total IA</i></span><b>${total}</b></li>`;
-  }
-
-  const econ = `
-    <div class="sum-title">Économie</div>
-    <ul class="sum-list">
-      <li class="sum-item"><span><b>Or (toi)</b></span><b>${myGold}</b></li>
-      ${enemiesRows}
-    </ul>`;
-
-  // Comptages
+  const box=document.getElementById('summary'); if(!box)return;
   const me=countSummary(1);
-  const army = `
-    <div class="sum-title" style="margin-top:6px">Armée</div>
-    <ul class="sum-list">
-      <li class="sum-item"><span><b>Fermier</b></span><b>${me.units[1]}</b></li>
-      <li class="sum-item"><span><b>Milicien</b></span><b>${me.units[2]}</b></li>
-      <li class="sum-item"><span><b>Soldat</b></span><b>${me.units[3]}</b></li>
-    </ul>`;
 
-  const fleet = `
-    <div class="sum-title" style="margin-top:6px">Flotte</div>
-    <ul class="sum-list">
-      <li class="sum-item"><span><b>Sloop</b></span><b>${me.ships.sloop}</b></li>
-      <li class="sum-item"><span><b>Brigantin</b></span><b>${me.ships.brig}</b></li>
-      <li class="sum-item"><span><b>Galion</b></span><b>${me.ships.galleon}</b></li>
-    </ul>`;
+  const army = [1,2,3].map(t=>{
+    const qty = me.units[t];
+    return `<li class="sum-item">${iconUnitSmall(t)}
+              <span><b>${qty}</b> ${UNITS[t].name}</span>
+              <span class="meta">— Loyer ${UNITS[t].upkeep}/u</span>
+            </li>`;
+  }).join('');
 
-  // Fiche rapide PM / Coût / Loyer (rappels)
-  const stats = `
-    <div class="sum-title" style="margin-top:6px">Unités — PM / Coût / Loyer</div>
-    <ul class="sum-list">
-      <li class="sum-item"><span>Fermier</span><span>${UNITS[1].move} / ${recruitCost(1,1)} / ${UNITS[1].upkeep}</span></li>
-      <li class="sum-item"><span>Milicien</span><span>${UNITS[2].move} / ${recruitCost(2,1)} / ${UNITS[2].upkeep}</span></li>
-      <li class="sum-item"><span>Soldat</span><span>${UNITS[3].move} / ${recruitCost(3,1)} / ${UNITS[3].upkeep}</span></li>
-    </ul>`;
+  const fleet = [
+    {k:'sloop',label:'Sloop'},
+    {k:'brig',label:'Brigantin'},
+    {k:'galleon',label:'Galion'},
+  ].map(s=>`<li class="sum-item">${iconShipSmall()}
+              <span><b>${me.ships[s.k]}</b> ${s.label}</span>
+            </li>`).join('');
 
-  box.innerHTML = econ + army + fleet + stats;
+  const upk = upkeep(1).toFixed(1);
+
+  box.innerHTML =
+    `<div class="sum-title">Gestion</div>
+     <ul class="sum-list">${army}</ul>
+     <div class="sum-title" style="margin-top:6px">Flotte</div>
+     <ul class="sum-list">${fleet}</ul>
+     <div class="sum-title" style="margin-top:6px">Économie</div>
+     <div>Loyer total par tour : <b>${upk}</b> or</div>`;
 }
 
 /* ==================== Règles ==================== */
@@ -728,7 +725,6 @@ function render(){
   updateActionsPanel();
   renderSummary();
 
-  if (!isDragging) centerBoard();
 }
 
 /* ==================== SVG helpers ==================== */
@@ -750,6 +746,9 @@ function updateHUD(){
   if(t) t.textContent=(turn===1?'Joueur':`IA ${turn-1}`);
   const y=document.getElementById('yearLabel');
   if(y) y.textContent=YEAR;
+  const upkMe = upkeep(1).toFixed(1);
+  const upkEl = document.getElementById('myUpkeep');
+  if (upkEl) upkEl.textContent = `− Loyer total : ${upkMe}`;
 }
 function addLog(s,d=null,owner=null){ const e=document.createElement('div'); e.className='entry'; if(owner) e.dataset.owner=owner; e.innerHTML=`<div class="summary">• ${s}</div><div class="detail">${d?d:s}</div>`; e.querySelector('.summary').onclick=()=>e.classList.toggle('open'); logEl.insertAdjacentElement('afterbegin',e); }
 function log(s,o=null){ addLog(s,null,o); }
@@ -868,6 +867,13 @@ B('recSoldier').onclick= ()=>{ const s=selected; if(!s||s.kind!=='city') return;
 B('upFarmMil').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,2); };
 B('upMilSold').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,3); };
 
+// Libellé riche pour les boutons de recrutement
+function recruitLabel(type, cost){
+  const u = UNITS[type];
+  return `<span class="title">Recruter ${u.name}</span>`+
+         `<span class="meta">Coût ${cost} · Loyer ${u.upkeep} · PM ${u.move}</span>`;
+}
+
 function updateActionsPanel(){
   const sel=selected?cell(selected.x,selected.y):null, myTurn=(turn===1);
 
@@ -895,9 +901,9 @@ function updateActionsPanel(){
   const onCity=myTurn&&sel&&selected.kind==='city'&&sel.structure==='city'&&sel.owner===1;
   const occupied = !!(onCity && (sel.unit || sel.ship));
   const cF = recruitCost(1,1), cM = recruitCost(2,1), cS = recruitCost(3,1);
-  document.getElementById('recFarmer').textContent  = `Recruter Fermier — PM ${UNITS[1].move} · Loyer ${UNITS[1].upkeep} · Coût ${cF}`;
-  document.getElementById('recMilitia').textContent = `Recruter Milicien — PM ${UNITS[2].move} · Loyer ${UNITS[2].upkeep} · Coût ${cM}`;
-  document.getElementById('recSoldier').textContent = `Recruter Soldat — PM ${UNITS[3].move} · Loyer ${UNITS[3].upkeep} · Coût ${cS}`;
+  document.getElementById('recFarmer').innerHTML  = recruitLabel(1, cF);
+  document.getElementById('recMilitia').innerHTML = recruitLabel(2, cM);
+  document.getElementById('recSoldier').innerHTML = recruitLabel(3, cS);
 
   B('recFarmer').disabled  = !(onCity && !occupied && (gold[1]||0)>=cF);
   B('recMilitia').disabled = !(onCity && !occupied && (gold[1]||0)>=cM);
@@ -942,7 +948,7 @@ endBtn.onclick = () => {
   endBtn.disabled = true;
   endTurn();
 };
-document.getElementById('restart').onclick=()=>{ setSeed(CURRENT_SEED); const aiCount=+document.getElementById('aiCount').value||0; const allied=+document.getElementById('aiAllied').value; const diff=+document.getElementById('difficulty').value||2; genMap(CURRENT_SIZE,aiCount,allied,diff); uiLocked=false; endBtn.disabled=false; render(); addLog(`Relance de la carte (seed ${CURRENT_SEED})`,null,1); };
+document.getElementById('restart').onclick=()=>{ setSeed(CURRENT_SEED); const aiCount=+document.getElementById('aiCount').value||0; const allied=+document.getElementById('aiAllied').value; const diff=+document.getElementById('difficulty').value||2; genMap(CURRENT_SIZE,aiCount,allied,diff); uiLocked=false; endBtn.disabled=false; render(); centerBoard(); addLog(`Relance de la carte (seed ${CURRENT_SEED})`,null,1); };
 document.getElementById('menu').onclick=()=>{ uiLocked=false; endBtn.disabled=false; showStart(); };
 
 function applyBankruptcy(owner){ const upk=upkeep(owner); if((gold[owner]||0)>=upk) return; for(const c of S){ if(c.unit&&c.unit.owner===owner)c.unit=null; if(c.ship&&c.ship.owner===owner)c.ship=null; } gold[owner]=Math.max(0,gold[owner]||0); addLog(`${owner===1?'Joueur':('IA '+(owner-1))} en banqueroute : armée dissoute`,`Loyer (${upk.toFixed(1)}) > or disponible.`,owner); }
@@ -1054,7 +1060,7 @@ document.querySelectorAll('#start button[data-size]').forEach(b=>{
     const key=b.dataset.size, seedField=document.getElementById('seedInput'), seedText=(seedField?.value||'').trim();
     if(seedText==='') setSeed(Math.floor(Math.random()*2**31)>>>0); else setSeed(seedText);
     const aiCount=+document.getElementById('aiCount').value||0, allied=+document.getElementById('aiAllied').value, diff=+document.getElementById('difficulty').value||2;
-    CURRENT_SIZE=key; genMap(key,aiCount,allied,diff); hideStart(); uiLocked=false; endBtn.disabled=false; render(); addLog(`Nouvelle partie (${key}, seed ${CURRENT_SEED}, IA ${aiCount}, alliées=${!!+allied}, diff ${diff})`,null,1);
+    CURRENT_SIZE=key; genMap(key,aiCount,allied,diff); hideStart(); uiLocked=false; endBtn.disabled=false; render(); centerBoard(); addLog(`Nouvelle partie (${key}, seed ${CURRENT_SEED}, IA ${aiCount}, alliées=${!!+allied}, diff ${diff})`,null,1);
   });
 });
 document.getElementById('diceSeed').addEventListener('click',()=>{ const r=(Math.floor(Math.random()*2**31)>>>0); document.getElementById('seedInput').value=r; });
