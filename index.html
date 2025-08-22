@@ -40,7 +40,8 @@
   .paper-chip{padding:6px 10px;border-radius:9px;border:1px solid #d7c7ad;background:#fff9;backdrop-filter:blur(2px)}
   .controls{display:flex;gap:8px;align-items:center}
   .controls button{padding:8px 12px;border:1px solid #cdbb98;border-radius:9px;background:#fff9;cursor:pointer;box-shadow:inset 0 1px 0 #fff7}
-  .paper-chip .sub{display:block;font-size:12px;opacity:.8;margin-top:2px}
+  .paper-chip .sub{display:block;font-size:12px;opacity:.8;margin-top:2px;}
+
   /* Gestion (ex-Résumé) — petites mentions à droite */
   .sum-item .meta{margin-left:6px;font-size:12px;opacity:.75}
   .sum-item b{font-weight:800}
@@ -172,7 +173,11 @@
 <header>
   <div class="paper-chip">Tour: <b id="turnLabel">Joueur</b></div>
   <div class="paper-chip">Année: <b id="yearLabel">1</b></div>
-  <div class="paper-chip">Cycle: <b id="turnCount">1</b></div>
+  <div class="paper-chip">Or (toi): <b id="gold1">0</b>
+    <span class="sub" id="myUpkeep">− Loyer total : 0</span>
+  </div>
+  <div class="paper-chip">Or adversaires: <b id="gold2">0</b></div>
+
   <div class="controls">
     <button id="endTurn">Finir le tour</button>
     <button id="restart">Recommencer</button>
@@ -370,7 +375,7 @@ function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
   for(let i=0;i<starts.length;i++){ const o=i+1, p3=starts[i]; cell(p3.x,p3.y).structure='city'; cell(p3.x,p3.y).owner=o; spawnUnit(p3.x,p3.y,{owner:o,type:1,level:1},true); gold[o]=2; }
 
   turn=1; turnCount=1; recalcMoved(false);
-  Year=1;
+  YEAR=1;
 }
 function findNearestLandOnly(sx,sy){let best={x:sx,y:sy},bestD=1e9;for(const c of S){if(c.terrain==='land'){const d=Math.abs(c.x-sx)+Math.abs(c.y-sy);if(d<bestD){bestD=d;best={x:c.x,y:c.y};}}}return best;}
 function randomFarLandOnly(points,minD){const candidates=S.filter(c=>(c.terrain==='land')&&c.structure==='none');for(let t=0;t<800;t++){const c=candidates[Math.floor(rand()*candidates.length)];if(!c)break;if(points.every(p=>hexDist(c,p)>=minD))return{x:c.x,y:c.y};}return null;}
@@ -742,14 +747,28 @@ function line(s,x1,y1,x2,y2,sw=2){const l=document.createElementNS('http://www.w
 
 /* ==================== HUD & LOG ==================== */
 function updateHUD(){
-  const t=document.getElementById('turnLabel');
-  if(t) t.textContent=(turn===1?'Joueur':`IA ${turn-1}`);
-  const y=document.getElementById('yearLabel');
-  if(y) y.textContent=YEAR;
+  // Libellés de tour et année
+  const t = document.getElementById('turnLabel');
+  if (t) t.textContent = (turn===1 ? 'Joueur' : `IA ${turn-1}`);
+
+  const y = document.getElementById('yearLabel');
+  if (y) y.textContent = YEAR;
+
+  // Or (toi) + Or (adversaires)
+  const g1El = document.getElementById('gold1');
+  if (g1El) g1El.textContent = Math.floor(gold[1] || 0);
+
+  let g2 = 0;
+  for (let o=2;o<=TOTAL_PLAYERS;o++) g2 += Math.floor(gold[o] || 0);
+  const g2El = document.getElementById('gold2');
+  if (g2El) g2El.textContent = g2;
+
+  // Loyer total du joueur
   const upkMe = upkeep(1).toFixed(1);
   const upkEl = document.getElementById('myUpkeep');
   if (upkEl) upkEl.textContent = `− Loyer total : ${upkMe}`;
 }
+
 function addLog(s,d=null,owner=null){ const e=document.createElement('div'); e.className='entry'; if(owner) e.dataset.owner=owner; e.innerHTML=`<div class="summary">• ${s}</div><div class="detail">${d?d:s}</div>`; e.querySelector('.summary').onclick=()=>e.classList.toggle('open'); logEl.insertAdjacentElement('afterbegin',e); }
 function log(s,o=null){ addLog(s,null,o); }
 
@@ -813,7 +832,54 @@ function moveUnit(sx, sy, dx, dy){
   if(!canAnnex(me,dx,dy)){ addLog("Impossible d'annexer","Il faut être adjacent à ton territoire.",me); return; }
   dst.unit={...src.unit,moved:true}; dst.owner=me; src.unit=null; addLog(`Prise de ${dx},${dy}`,'La case passe sous ton contrôle.',me);
 }
-function moveShip(sx,sy,dx,dy){ const src=cell(sx,sy), dst=cell(dx,dy); if(!src?.ship||src.ship.moved||dst?.ship) return; if(src.ship.owner!==1) return; dst.ship={...src.ship,moved:true}; src.ship=null; }
+function moveUnitAI(sx, sy, dx, dy, owner){
+  const src = cell(sx, sy), dst = cell(dx, dy);
+  if (!src?.unit || src.unit.moved || src.unit.owner !== owner) return;
+  const me = owner;
+
+  if (moveCostUnit(src.unit.type, src, dst, me) === Infinity) return;
+
+  // Fusion alliée (même type)
+  if (dst?.unit && !isEnemy(me, dst.unit.owner) && dst.unit.type === src.unit.type){
+    dst.unit.level = (dst.unit.level || 1) + (src.unit.level || 1);
+    dst.unit.moved = true; src.unit = null; dst.owner = me;
+    addLog(`(IA) Fusion en ${dx},${dy}`, null, me);
+    return;
+  }
+
+  // Combat
+  if (dst?.unit && isEnemy(me, dst.unit.owner)){
+    const r = beats(src.unit.type, dst.unit.type);
+    if (r === 1){
+      if (!canAnnex(me, dx, dy)) return;
+      dst.unit = { ...src.unit, moved: true }; src.unit = null; dst.owner = me;
+    } else if (r === -1){
+      src.unit = null;
+    } else {
+      src.unit = null; dst.unit = null;
+    }
+    return;
+  }
+
+  if (!canAnnex(me, dx, dy)) return;
+  dst.unit = { ...src.unit, moved: true }; dst.owner = me; src.unit = null;
+}
+
+function moveShip(sx, sy, dx, dy){
+  const src = cell(sx, sy), dst = cell(dx, dy);
+  if (!src?.ship || src.ship.moved || src.ship.owner !== 1 || dst?.ship) return;
+  if (!passableForShip(src, dst, 1, src.ship.kind)) return;
+  dst.ship = { ...src.ship, moved: true };
+  src.ship = null;
+}
+
+function moveShipAI(sx, sy, dx, dy, owner){
+  const src = cell(sx, sy), dst = cell(dx, dy);
+  if (!src?.ship || src.ship.moved || src.ship.owner !== owner || dst?.ship) return;
+  // Validation terrain
+  if (!passableForShip(src, dst, owner, src.ship.kind)) return;
+  dst.ship = { ...src.ship, moved: true }; src.ship = null;
+}
 
 function capacityLeft(shipCellObj){ const ship=shipCellObj.ship||shipCellObj; return SHIPS[ship.kind].cap - (ship.cargo?.reduce((a,u)=>a+(u.level||1),0)||0); }
 function makeShip(kind){
@@ -1007,7 +1073,7 @@ function aiTurn(owner){
       opts.sort((a,b)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b[0],y:b[1]},tgt));
       const [nx,ny]=opts[0];
       // IA ne doit jamais bouger les pions du joueur
-      if (cell(u.x,u.y)?.unit?.owner===owner) moveUnit(u.x,u.y,nx,ny);
+      moveUnitAI(u.x, u.y, nx, ny, owner);
     }
   }
 
@@ -1021,7 +1087,7 @@ function aiTurn(owner){
     });
     if(shore && b.ship.cargo&&b.ship.cargo.length){ const [dx,dy]=shore; const t=cell(dx,dy); t.unit={...b.ship.cargo.shift(),moved:true}; t.owner=owner; b.ship.moved=true; addLog(`IA ${owner-1} débarque`,null,owner); continue; }
     const tgt=nearestPlayerCoast(owner); const opts=reachableFrom(b.x,b.y,'ship',b.ship.kind);
-    if(tgt&&opts.length){ opts.sort((a,b2)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b2[0],y:b2[1]},tgt)); const [nx,ny]=opts[0]; if (cell(b.x,b.y)?.ship?.owner===owner) { const src=cell(b.x,b.y); const dst=cell(nx,ny); if(!dst?.ship) dst && (dst.ship={...src.ship,moved:true}) && (src.ship=null); } }
+    if (tgt && opts.length){opts.sort((a,b2)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b2[0],y:b2[1]},tgt));const [nx,ny] = opts[0]; moveShipAI(b.x, b.y, nx, ny, owner);}
   }
 
   render(); checkVictory(); endTurn();
