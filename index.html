@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>War-ixel</title>
+<title>War-ixel v0.6.7</title>
 <style>
   :root{
     --deep:#255c9e;
@@ -42,7 +42,7 @@
   .controls button{padding:8px 12px;border:1px solid #cdbb98;border-radius:9px;background:#fff9;cursor:pointer;box-shadow:inset 0 1px 0 #fff7}
   .paper-chip .sub{display:block;font-size:12px;opacity:.8;margin-top:2px;}
 
-  /* Gestion (ex-Résumé) — petites mentions à droite */
+  /* Gestion — éléments à droite */
   .sum-item .meta{margin-left:6px;font-size:12px;opacity:.75}
   .sum-item b{font-weight:800}
 
@@ -63,33 +63,44 @@
   #actions{display:grid;gap:6px}
   /* Actions — style parchemin */
   #actions button{
-  padding:10px 12px;
-  border-radius:10px;
-  border:1px solid #cdbb98;
-  cursor:pointer;
-  text-align:left;
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:2px;
-  background:
-    linear-gradient(180deg,#fff9 0 30%, #0000 60%),
-    repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
-    linear-gradient(180deg,#f7e8bf,#f2d793 55%,#e6c377);
-  box-shadow:inset 0 1px 0 #fff7, 0 2px 8px rgba(0,0,0,.08);
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #cdbb98;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:2px;
+    background:
+      linear-gradient(180deg,#fff9 0 30%, #0000 60%),
+      repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
+      linear-gradient(180deg,#f7e8bf,#f2d793 55%,#e6c377);
+    box-shadow:inset 0 1px 0 #fff7, 0 2px 8px rgba(0,0,0,.08);
   }   
   #actions button .title{font-weight:700;color:#3b2f20}
   #actions button .meta{font-size:12px;opacity:.8;color:#473924}
-  /* Actions indisponibles : on les cache */
+
+  /* Par défaut: on cache les indisponibles */
   #actions button[disabled]{ display:none; }
+
+  /* État "joué" : on montre les boutons désactivés en rouge pour signaler que le tour est fait */
+  #actions[data-played="1"] button[disabled]{
+    display:flex;
+    opacity:1;
+    filter:none;
+    border-color:#c62828;
+    color:#8b0000;
+  }
+  #actions[data-played="1"] button[disabled] .title{ color:#8b0000; }
 
   /* Petit message d’aide dans le panneau Actions */
   #actions .hint-msg{
-  padding:10px 12px;
-  border-radius:10px;
-  border:1px dashed #cdbb98;
-  background:#fff7;
-  color:#473924;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px dashed #cdbb98;
+    background:#fff7;
+    color:#473924;
   }
 
   /* Journal */
@@ -128,29 +139,29 @@
 
   .hex{position:absolute;left:0;top:0;transform:translate(-50%,-50%);cursor:pointer}
   .hex.selected{
-  outline:3px solid var(--select);
-  outline-offset:-2px;
-  box-shadow:0 0 0 3px rgba(255,204,0,.45), 0 0 26px rgba(255,204,0,.55) inset;
+    outline:3px solid var(--select);
+    outline-offset:-2px;
+    box-shadow:0 0 0 3px rgba(255,204,0,.45), 0 0 26px rgba(255,204,0,.55) inset;
   }
   @keyframes selping{
-  0%{ transform:translate(-50%,-50%) scale(.7); opacity:.9; }
-  70%{ transform:translate(-50%,-50%) scale(1.25); opacity:0; }
-  100%{ opacity:0; }
+    0%{ transform:translate(-50%,-50%) scale(.7); opacity:.9; }
+    70%{ transform:translate(-50%,-50%) scale(1.25); opacity:0; }
+    100%{ opacity:0; }
   }
   .hex.selected::after{
-  content:"";
-  position:absolute; left:50%; top:50%;
-  width:56px; height:56px; transform:translate(-50%,-50%);
-  border-radius:50%; border:2px solid var(--select);
-  opacity:.85; animation:selping 1.1s ease-out infinite;
+    content:"";
+    position:absolute; left:50%; top:50%;
+    width:56px; height:56px; transform:translate(-50%,-50%);
+    border-radius:50%; border:2px solid var(--select);
+    opacity:.85; animation:selping 1.1s ease-out infinite;
   }
-
 
   .badge{
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
     width:34px;height:34px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
-    border:2px solid rgba(255,255,255,.85);box-shadow:0 1px 1px rgba(0,0,0,.08)
+    border:2px solid rgba(255,255,255,.85);box-shadow:0 1px 1px rgba(0,0,0,.08);
+    z-index:2;
   }
   .badge .icon{width:18px;height:18px;display:block}
   .badge::after{content:none !important}
@@ -158,7 +169,8 @@
   .camo::before{content:"";position:absolute;inset:-2px;background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(0,0,0,.06) 6px 12px);mix-blend-mode:multiply;border-radius:8px}
 
   .tower,.city{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:32px;height:28px;border-radius:6px;border:2px solid rgba(0,0,0,.15)}
-  .city{background:#c68c53;display:grid;place-items:center}
+  .city{background:#c68c53;display:grid;place-items:center;z-index:1;}
+  .city.mini{width:26px;height:22px;transform:translate(-50%,-72%);opacity:.98;} /* ville visible sous l’unité */
   .tower{background:#e0e0e0;display:grid;place-items:center}
   .tower svg{width:22px;height:22px}
   .castle{width:22px;height:16px}
@@ -312,6 +324,7 @@ function svgHexPoints(cx,cy,shrink=1){ const r=R*shrink, h=Math.sqrt(3)*r;
 }
 
 /* ==================== STATE / CONST ==================== */
+const VERSION='0.6.7';
 const UNITS={1:{key:1,name:'Fermier',cost:1,upkeep:0.5,move:3},2:{key:2,name:'Milicien',cost:2,upkeep:1,move:2},3:{key:3,name:'Soldat',cost:3,upkeep:1.5,move:1}};
 const SHIPS={sloop:{key:'sloop',name:'Sloop',cost:5,upkeep:2.5,move:3,water:'shallow',cap:1,hp:2,atk:1,masts:1},
              brig:{key:'brig',name:'Brigantin',cost:10,upkeep:5,move:2,water:'both',cap:2,hp:3,atk:1.5,masts:2},
@@ -333,7 +346,9 @@ function ownerColor(o){ if(o===1) return playerColor; return AI_PALETTE[(o-2)%AI
 /* Zoom & pan */
 let zoom=1, panX=0, panY=0;
 const MIN_ZOOM=0.6, MAX_ZOOM=2.0, ZOOM_STEP=0.1;
-let isDragging=false, dragStartX=0, dragStartY=0, panStartX=0, panStartY=0, justPanned=false;
+let isDragging=false, isMouseDown=false, dragStartX=0, dragStartY=0, panStartX=0, panStartY=0, justPanned=false;
+let clickSuppressUntil=0; // fenêtre anti-clic post-drag
+const DRAG_THRESHOLD = 8; // px
 let WpxCached=0, HpxCached=0;
 
 const boardEl=document.getElementById('board'), stageEl=document.getElementById('stage'),
@@ -379,7 +394,7 @@ function hexDist(a,b){const ac=toCube(a.x,a.y),bc=toCube(b.x,b.y);return Math.ma
 function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
   AI_ALLIED=!!+allied; DIFFICULTY=+difficulty||2; TOTAL_PLAYERS=1+(+aiCount||0);
   const p=SIZE_PRESETS[sizeKey]||SIZE_PRESETS.small; W=p.W; H=p.H; S.length=0;
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++)S.push({x,y,terrain:'land',owner:0,structure:'none',unit:null,ship:null,e:0,shore:false});
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)S.push({x,y,terrain:'land',owner:0,structure:'none',unit:null,ship:null,e:0,shore:false,cityRecruited:false});
 
   for(const c of S){
     const sx=c.x/W*6, sy=c.y/H*6; const elev=fbm(sx,sy,5), humid=fbm(sx+20,sy-13,4); c.e=elev;
@@ -402,7 +417,7 @@ function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
 function findNearestLandOnly(sx,sy){let best={x:sx,y:sy},bestD=1e9;for(const c of S){if(c.terrain==='land'){const d=Math.abs(c.x-sx)+Math.abs(c.y-sy);if(d<bestD){bestD=d;best={x:c.x,y:c.y};}}}return best;}
 function randomFarLandOnly(points,minD){const candidates=S.filter(c=>(c.terrain==='land')&&c.structure==='none');for(let t=0;t<800;t++){const c=candidates[Math.floor(rand()*candidates.length)];if(!c)break;if(points.every(p=>hexDist(c,p)>=minD))return{x:c.x,y:c.y};}return null;}
 function spawnUnit(x,y,u,moved=true){const c=cell(x,y);if(!c||c.unit||c.ship)return false;c.unit={owner:u.owner,type:u.type,level:u.level||1,moved};c.owner=u.owner;return true;}
-function recalcMoved(flag){for(const c of S){if(c.unit)c.unit.moved=flag;if(c.ship)c.ship.moved=flag;}}
+function recalcMoved(flag){for(const c of S){if(c.unit)c.unit.moved=flag;if(c.ship)c.ship.moved=flag; if(c.structure==='city') c.cityRecruited=false;}}
 
 /* ==================== Economie / résumé ==================== */
 function income(o){let inc=0;for(const c of S){if(c.owner===o&&(c.terrain==='land'||c.terrain==='forest'))inc++; if(c.owner===o&&c.structure==='city')inc+=2;} return inc;}
@@ -461,7 +476,6 @@ function renderSummary(){
      </ul>
      <div>Loyer total par tour : <b>${upk}</b> or</div>`;
 }
-
 
 /* ==================== Règles ==================== */
 function isEnemy(a,b){ if(a===b) return false; if(AI_ALLIED&&a>1&&b>1) return false; return true; }
@@ -657,40 +671,29 @@ function drawTerrain(){
       ov.setAttribute('fill','url(#treePattern)');
       ov.setAttribute('opacity','1'); gT.appendChild(ov);
     }
-        // --- Petits rochers décoratifs (uniquement sur terrain 'land', pas 'forest')
+    /* Petits rochers décoratifs (uniquement sur terrain 'land') */
     if (c.terrain === 'land'){
-      // tirage déterministe par case
       const r = hash(c.x*13.3, c.y*7.7);
-      if (r < 0.28){ // ~28% des cases land reçoivent des rochers
+      if (r < 0.28){
         const grp = document.createElementNS(terrain.namespaceURI,'g');
         grp.setAttribute('opacity','0.35');
-
-        // petite variation de position dans l'hex
         const jitterX = (hash(c.x*51.1, c.y*27.9)-0.5) * (HEX_W*0.20);
         const jitterY = (hash(c.x*17.2, c.y*39.8)-0.5) * (HEX_H*0.20);
         grp.setAttribute('transform', `translate(${cx + jitterX},${cy + jitterY})`);
-
         const rock = (sx,sy,sz)=>{
           const p=document.createElementNS(terrain.namespaceURI,'path');
-          // galet asymétrique simple
-          p.setAttribute('d', `M ${sx-sz} ${sy}
-                                q ${sz*0.9} ${-sz*0.8} ${sz*2} 0
-                                q ${-sz*0.8} ${sz*0.9} ${-sz*2} 0 Z`);
-          p.setAttribute('fill', '#7f7362');   // pierre
-          p.setAttribute('stroke', '#a49786'); // liseré léger
+          p.setAttribute('d', `M ${sx-sz} ${sy} q ${sz*0.9} ${-sz*0.8} ${sz*2} 0 q ${-sz*0.8} ${sz*0.9} ${-sz*2} 0 Z`);
+          p.setAttribute('fill', '#7f7362');
+          p.setAttribute('stroke', '#a49786');
           p.setAttribute('stroke-width', '0.6');
           grp.appendChild(p);
         };
-
-        // 1 à 3 cailloux selon r
         rock(0, 0, 2.0);
         if (r < 0.18) rock(6, 3, 1.3);
         if (r < 0.10) rock(-5, 3, 1.1);
-
         gT.appendChild(grp);
       }
     }
-
   }
 
   overlay.setAttribute('width',Wpx); overlay.setAttribute('height',Hpx); overlay.setAttribute('viewBox',`0 0 ${Wpx} ${Hpx}`);
@@ -757,7 +760,7 @@ function render(){
     d.style.width = HEX_W+'px'; d.style.height = HEX_H+'px';
     d.style.clipPath='polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
     d.dataset.x = x; d.dataset.y = y;
-    d.addEventListener('click', onCellClick);
+    d.addEventListener('click', onCellClick, true);
 
     // Frontière
     const isLand = (c.terrain === 'land' || c.terrain === 'forest');
@@ -777,7 +780,7 @@ function render(){
     const hidden = enemyHiddenForPlayer(c);
 
     if (c.structure === 'city' && !hidden){
-      const v=document.createElement('div'); v.className='city';
+      const v=document.createElement('div'); v.className='city' + (c.unit && !hidden ? ' mini' : '');
       if (c.owner===1 && c.terrain==='forest') v.classList.add('camo');
       v.appendChild(svgCastle()); d.appendChild(v);
       const h=document.createElement('div'); h.className='hint'; h.textContent='+2'; d.appendChild(h);
@@ -807,7 +810,6 @@ function render(){
   updateHUD();
   updateActionsPanel();
   renderSummary();
-
 }
 
 /* ==================== SVG helpers ==================== */
@@ -825,7 +827,6 @@ function line(s,x1,y1,x2,y2,sw=2){const l=document.createElementNS('http://www.w
 
 /* ==================== HUD & LOG ==================== */
 function updateHUD(){
-  // Libellés de tour et année
   const t = document.getElementById('turnLabel');
   if (t) t.textContent = (turn===1 ? 'Joueur' : `IA ${turn-1}`);
 
@@ -838,7 +839,9 @@ function log(s,o=null){ addLog(s,null,o); }
 
 /* ==================== Sélection / clics ==================== */
 function onCellClick(e){
-  if (justPanned) return;  // ignore le "click" juste après un drag
+  // si drag tout juste terminé, on ignore le clic
+  if (justPanned || Date.now() < clickSuppressUntil) { e.stopPropagation(); e.preventDefault?.(); return; }
+
   const x=+e.currentTarget.dataset.x, y=+e.currentTarget.dataset.y, c=cell(x,y);
 
   if(selected && reach.some(([mx,my])=>mx===x&&my===y)){
@@ -870,16 +873,38 @@ function onCellClick(e){
 
 /* ==================== Déplacements / actions ==================== */
 function unitName(t){ return (UNITS[t]?.name||'Unité').toLowerCase(); }
+
+/* Fusion spéciale + déplacement joueur */
 function moveUnit(sx, sy, dx, dy){
   const src = cell(sx, sy), dst = cell(dx, dy);
-  if (!src?.unit || src.unit.moved || src.unit.owner !== 1) return;  // stricte: joueur seulement
+  if (!src?.unit || src.unit.moved || src.unit.owner !== 1) return;  // joueur seulement
   const me = 1;
 
   if (moveCostUnit(src.unit.type, src, dst, me) === Infinity) return;
 
-  // Fusion alliée
+  // Fusion alliée (règles v0.6.7)
   if(dst?.unit && !isEnemy(me,dst.unit.owner) && dst.unit.type===src.unit.type){
-    dst.unit.level=(dst.unit.level||1)+(src.unit.level||1); dst.unit.moved=true; src.unit=null; addLog(`Fusion en ${dx},${dy}`,`Pile de ${UNITS[dst.unit.type].name} ×${dst.unit.level}`,me); dst.owner=me; return;
+    const st = src.unit.type, sl = (src.unit.level||1), dl = (dst.unit.level||1);
+
+    // Farmer(1)+Farmer(1) => Milice(1) / Milice(1)+Milice(1) => Soldat(1)
+    if (st===1 && sl===1 && dl===1){
+      dst.unit = {owner:me, type:2, level:1, moved:true};
+      src.unit=null; dst.owner=me;
+      addLog(`Fusion → Milice`, `Deux fermiers s’unissent en milice (en ${dx},${dy}).`, me);
+      return;
+    }
+    if (st===2 && sl===1 && dl===1){
+      dst.unit = {owner:me, type:3, level:1, moved:true};
+      src.unit=null; dst.owner=me;
+      addLog(`Fusion → Soldat`, `Deux milices s’unissent en soldat (en ${dx},${dy}).`, me);
+      return;
+    }
+
+    // Sinon: pile classique (addition de niveaux)
+    dst.unit.level = (dst.unit.level||1) + (src.unit.level||1);
+    dst.unit.moved = true; src.unit=null; dst.owner=me;
+    addLog(`Fusion en ${dx},${dy}`,`Pile de ${UNITS[dst.unit.type].name} ×${dst.unit.level}`,me);
+    return;
   }
 
   // Combat
@@ -896,370 +921,529 @@ function moveUnit(sx, sy, dx, dy){
   if(!canAnnex(me,dx,dy)){ addLog("Impossible d'annexer","Il faut être adjacent à ton territoire.",me); return; }
   dst.unit={...src.unit,moved:true}; dst.owner=me; src.unit=null; addLog(`Prise de ${dx},${dy}`,'La case passe sous ton contrôle.',me);
 }
-function moveUnitAI(sx, sy, dx, dy, owner){
-  const src = cell(sx, sy), dst = cell(dx, dy);
-  if (!src?.unit || src.unit.moved || src.unit.owner !== owner) return;
-  const me = owner;
 
-  if (moveCostUnit(src.unit.type, src, dst, me) === Infinity) return;
+  /* IA : appliquer la même fusion spéciale */
+  function moveUnitAI(sx, sy, dx, dy, owner){
+    const src = cell(sx, sy), dst = cell(dx, dy);
+    if (!src?.unit || src.unit.moved || src.unit.owner !== owner) return;
+    const me = owner;
 
-  // Fusion alliée (même type)
-  if (dst?.unit && !isEnemy(me, dst.unit.owner) && dst.unit.type === src.unit.type){
-    dst.unit.level = (dst.unit.level || 1) + (src.unit.level || 1);
-    dst.unit.moved = true; src.unit = null; dst.owner = me;
-    addLog(`(IA) Fusion en ${dx},${dy}`, null, me);
-    return;
-  }
+    if (moveCostUnit(src.unit.type, src, dst, me) === Infinity) return;
 
-  // Combat
-  if (dst?.unit && isEnemy(me, dst.unit.owner)){
-    const r = beats(src.unit.type, dst.unit.type);
-    if (r === 1){
-      if (!canAnnex(me, dx, dy)) return;
-      dst.unit = { ...src.unit, moved: true }; src.unit = null; dst.owner = me;
-    } else if (r === -1){
-      src.unit = null;
-    } else {
-      src.unit = null; dst.unit = null;
+    if (dst?.unit && !isEnemy(me, dst.unit.owner) && dst.unit.type === src.unit.type){
+      const st = src.unit.type, sl=(src.unit.level||1), dl=(dst.unit.level||1);
+      if (st===1 && sl===1 && dl===1){ dst.unit={owner:me,type:2,level:1,moved:true}; src.unit=null; dst.owner=me; return; }
+      if (st===2 && sl===1 && dl===1){ dst.unit={owner:me,type:3,level:1,moved:true}; src.unit=null; dst.owner=me; return; }
+      dst.unit.level = (dst.unit.level||1) + (src.unit.level||1);
+      dst.unit.moved = true; src.unit = null; dst.owner = me; return;
     }
-    return;
+
+    if (dst?.unit && isEnemy(me, dst.unit.owner)){
+      const r = beats(src.unit.type, dst.unit.type);
+      if (r === 1){
+        if (!canAnnex(me, dx, dy)) return;
+        dst.unit = { ...src.unit, moved: true }; src.unit = null; dst.owner = me;
+      } else if (r === -1){
+        src.unit = null;
+      } else {
+        src.unit = null; dst.unit = null;
+      }
+      return;
+    }
+
+    if (!canAnnex(me, dx, dy)) return;
+    dst.unit = { ...src.unit, moved: true }; dst.owner = me; src.unit = null;
   }
 
-  if (!canAnnex(me, dx, dy)) return;
-  dst.unit = { ...src.unit, moved: true }; dst.owner = me; src.unit = null;
-}
-
-function moveShip(sx, sy, dx, dy){
-  const src = cell(sx, sy), dst = cell(dx, dy);
-  if (!src?.ship || src.ship.moved || src.ship.owner !== 1 || dst?.ship) return;
-  if (!passableForShip(src, dst, 1, src.ship.kind)) return;
-  dst.ship = { ...src.ship, moved: true };
-  src.ship = null;
-}
-
-function moveShipAI(sx, sy, dx, dy, owner){
-  const src = cell(sx, sy), dst = cell(dx, dy);
-  if (!src?.ship || src.ship.moved || src.ship.owner !== owner || dst?.ship) return;
-  // Validation terrain
-  if (!passableForShip(src, dst, owner, src.ship.kind)) return;
-  dst.ship = { ...src.ship, moved: true }; src.ship = null;
-}
-
-function capacityLeft(shipCellObj){ const ship=shipCellObj.ship||shipCellObj; return SHIPS[ship.kind].cap - (ship.cargo?.reduce((a,u)=>a+(u.level||1),0)||0); }
-function makeShip(kind){
-  const u=cell(selected.x,selected.y); if(!u?.unit||u.unit.moved||u.unit.owner!==1) return;
-  const adj=neighbors(selected.x,selected.y).find(([nx,ny])=>{ const t=cell(nx,ny); if(!t||t.ship) return false; const rule=SHIPS[kind].water; if(rule==='shallow'&&t.terrain!=='shallow') return false; if(rule==='both'&&!(t.terrain==='shallow'||t.terrain==='deep')) return false; return true; });
-  if(!adj){addLog("Pas d'eau libre adjacente.",null,1);return;}
-  if((gold[1]||0) < SHIPS[kind].cost){addLog("Pas assez d'or.",null,1);return;}
-  gold[1]-=SHIPS[kind].cost; const [sx,sy]=adj; cell(sx,sy).ship={owner:1,kind,cargo:[],moved:true,hp:SHIPS[kind].hp}; addLog(`${SHIPS[kind].name} mis à l’eau`,`En ${sx},${sy} (capacité ${SHIPS[kind].cap})`,1); render();
-}
-function loadShip(){ const s=cell(selected.x,selected.y); if(!s?.ship||s.ship.moved||s.ship.owner!==1) return; if(!s.ship.cargo) s.ship.cargo=[];
-  const capLeft=capacityLeft(s);
-  const pos=neighbors(selected.x,selected.y).find(([nx,ny])=>{ const t=cell(nx,ny); return t?.unit && t.unit.owner===1 && (t.unit.level||1)<=capLeft; });
-  if(!pos){addLog("Aucune unité admissible à embarquer (capacité insuffisante).",null,1);return;}
-  const [ux,uy]=pos; const u=cell(ux,uy); s.ship.cargo.push({...u.unit}); u.unit=null; addLog('Embarquement',`Depuis ${ux},${uy}`,1); render();
-}
-function disembark(){
-  const s = cell(selected.x, selected.y);
-  if (!s?.ship || s.ship.moved || s.ship.owner!==1 || !(s.ship.cargo && s.ship.cargo.length)) return;
-
-  const spot = neighbors(selected.x, selected.y).find(([nx, ny]) => {
-    const t = cell(nx, ny);
-    return !!t && (t.terrain === 'land' || t.terrain === 'forest') && !t.unit
-      && !(t.structure === 'tower' && isEnemy(1, t.owner))
-      && (t.owner === 0 || canAnnex(1, nx, ny));
-  });
-
-  if (!spot) { addLog("Débarquement interdit : aucun emplacement valide (terre libre requise).", null, 1); return; }
-
-  const [dx, dy] = spot;
-  const t = cell(dx, dy);
-  const u = s.ship.cargo.shift();
-
-  t.unit = { ...u, moved: true };
-  t.owner = 1;
-  s.ship.moved = true;
-
-  addLog('Débarquement', `En ${dx},${dy}`, 1);
-  render();
-}
-
-/* ====== Recrutement / Upgrades côté panneau ====== */
-const B=id=>document.getElementById(id);
-B('buildCity').onclick=()=>{ if(!selected) return; const c=cell(selected.x,selected.y); const cc=cityCost(1); if((gold[1]||0)<cc||c?.structure!=='none'||c?.terrain!=='land') return; c.structure='city'; c.owner=1; gold[1]-=cc; addLog('Ville fondée',`En ${selected.x},${selected.y} (coût ${cc} or)`,1); render(); };
-B('buildTower').onclick=()=>{ if(!selected) return; const c=cell(selected.x,selected.y); if((gold[1]||0)<3||c?.structure!=='none'||c?.terrain!=='land') return; c.structure='tower'; c.owner=1; gold[1]-=3; addLog('Tour bâtie',`En ${selected.x},${selected.y}`,1); render(); };
-B('makeSloop').onclick=()=>makeShip('sloop'); B('makeBrig').onclick=()=>makeShip('brig'); B('makeGalleon').onclick=()=>makeShip('galleon');
-B('loadShip').onclick=()=>loadShip(); B('disembark').onclick=()=>disembark();
-
-B('recFarmer').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,1); };
-B('recMilitia').onclick= ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,2); };
-B('recSoldier').onclick= ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,3); };
-B('upFarmMil').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,2); };
-B('upMilSold').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,3); };
-
-// Libellé riche pour les boutons de recrutement
-function recruitLabel(type, cost){
-  const u = UNITS[type];
-  return `<span class="title">Recruter ${u.name}</span>`+
-         `<span class="meta">Coût ${cost} · Loyer ${u.upkeep} · PM ${u.move}</span>`;
-}
-
-function updateActionsPanel(){
-  const sel=selected?cell(selected.x,selected.y):null, myTurn=(turn===1);
-
-  const cc=cityCost(1); const bc=document.getElementById('buildCity'); bc.textContent=`Construire Ville (${cc} or)`;
-
-  const onUnit=myTurn&&sel&&selected.kind==='unit'&&sel.unit&&!sel.unit.moved;
-  const coastal=onUnit&&neighbors(selected.x,selected.y).some(([nx,ny])=>{const t=cell(nx,ny);return !!t && (t.terrain==='shallow'||t.terrain==='deep') && !t.ship; });
-  B('makeSloop').disabled=!(onUnit&&coastal&&(gold[1]||0)>=SHIPS.sloop.cost);
-  B('makeBrig').disabled=!(onUnit&&coastal&&(gold[1]||0)>=SHIPS.brig.cost);
-  B('makeGalleon').disabled=!(onUnit&&coastal&&(gold[1]||0)>=SHIPS.galleon.cost);
-
-  const ownEmptyLand=myTurn&&sel&&selected.kind==='empty'&&sel.terrain==='land'&&sel.structure==='none';
-  B('buildCity').disabled=!(ownEmptyLand&&(gold[1]||0)>=cc);
-  B('buildTower').disabled=!(ownEmptyLand&&(gold[1]||0)>=3);
-
-  const onShip=myTurn&&sel&&selected.kind==='ship'&&sel.ship&&!sel.ship.moved&&sel.ship.owner===1;
-  B('loadShip').disabled=!(onShip && capacityLeft(sel)>0 && neighbors(selected.x,selected.y).some(([nx,ny])=>{const t=cell(nx,ny);return t?.unit && t.unit.owner===1 && (t.unit.level||1)<=capacityLeft(sel);} ) );
-  B('disembark').disabled = !(onShip && (sel.ship.cargo?.length||0)>0 && neighbors(selected.x,selected.y).some(([nx,ny])=>{
-    const t = cell(nx,ny);
-    return !!t && (t.terrain==='land' || t.terrain==='forest') && !t.unit
-      && !(t.structure==='tower' && isEnemy(1,t.owner))
-      && (t.owner===0 || canAnnex(1,nx,ny));
-  }));
-
-  const onCity=myTurn&&sel&&selected.kind==='city'&&sel.structure==='city'&&sel.owner===1;
-  const occupied = !!(onCity && (sel.unit || sel.ship));
-  const cF = recruitCost(1,1), cM = recruitCost(2,1), cS = recruitCost(3,1);
-  document.getElementById('recFarmer').innerHTML  = recruitLabel(1, cF);
-  document.getElementById('recMilitia').innerHTML = recruitLabel(2, cM);
-  document.getElementById('recSoldier').innerHTML = recruitLabel(3, cS);
-
-  B('recFarmer').disabled  = !(onCity && !occupied && (gold[1]||0)>=cF);
-  B('recMilitia').disabled = !(onCity && !occupied && (gold[1]||0)>=cM);
-  B('recSoldier').disabled = !(onCity && !occupied && (gold[1]||0)>=cS);
-
-  let canUpFM=false, canUpMS=false, labFM='Améliorer Fermier → Milice', labMS='Améliorer Milice → Soldat';
-  if(onCity && sel.unit && sel.unit.owner===1){
-    if(sel.unit.type===1){ const price=upgradeCost(1,2); labFM += ` (${price} or)`; canUpFM=(gold[1]||0)>=price; }
-    if(sel.unit.type===2){ const price=upgradeCost(2,3); labMS += ` (${price} or)`; canUpMS=(gold[1]||0)>=price; }
-  }
-  document.getElementById('upFarmMil').textContent = labFM;
-  document.getElementById('upMilSold').textContent = labMS;
-  B('upFarmMil').disabled = !(onCity && sel?.unit?.owner===1 && sel.unit.type===1 && canUpFM);
-  B('upMilSold').disabled = !(onCity && sel?.unit?.owner===1 && sel.unit.type===2 && canUpMS);
-    // Afficher un message si aucune action visible
-  const ids = [
-    'buildCity','buildTower',
-    'recFarmer','recMilitia','recSoldier',
-    'upFarmMil','upMilSold',
-    'makeSloop','makeBrig','makeGalleon',
-    'loadShip','disembark'
-  ];
-  const anyVisible = ids.some(id => !B(id).disabled);
-
-  let msg = document.getElementById('actionsMsg');
-  if (!msg){
-    msg = document.createElement('div');
-    msg.id = 'actionsMsg';
-    msg.className = 'hint-msg';
-    document.getElementById('actions').appendChild(msg);
-  }
-  if (anyVisible){
-    msg.style.display = 'none';
-  } else {
-    msg.textContent = selected
-      ? "Aucune action possible ici."
-      : "Clique sur un territoire, une ville ou une unité pour accéder à ses actions.";
-    msg.style.display = 'block';
-  }
-}
-
-function recruitAtCity(x,y,type){
-  const c=cell(x,y);
-  if(!c||c.structure!=='city'||c.owner!==1){ addLog("Sélectionne d'abord ta ville.",null,1); return; }
-  if(c.unit || c.ship){ addLog("Recrutement impossible","La ville est occupée.",1); return; }
-  const cost=recruitCost(type,1);
-  if((gold[1]||0) < cost){ addLog("Pas assez d'or",`Coût ${cost} or`,1); return; }
-  gold[1] -= cost;
-  c.unit = { owner:1, type, level:1, moved:true };
-  addLog(`Recrutement: ${UNITS[type].name}`, `En ${x},${y} (coût ${cost})`, 1);
-  render();
-}
-function tryUpgradeAtCity(x,y,toTypeMaybe){
-  const c=cell(x,y);
-  if(!c||c.structure!=='city'||c.owner!==1||!c.unit||c.unit.owner!==1){ addLog("Aucune unité à améliorer dans la ville.",null,1); return; }
-  let to = toTypeMaybe || (c.unit.type===1?2:(c.unit.type===2?3:3));
-  if(c.unit.type===3){ addLog("Déjà au rang maximum.",null,1); return; }
-  const cost=upgradeCost(c.unit.type,to);
-  if((gold[1]||0)<cost){ addLog("Or insuffisant pour l'amélioration",`Coût ${cost} or`,1); return; }
-  gold[1]-=cost; c.unit.type=to; c.unit.moved=true; addLog(`Amélioration: ${UNITS[to].name}`,`En ${x},${y} (coût ${cost})`,1); render();
-}
-
-/* ==================== Fin de tour & IA ==================== */
-endBtn.onclick = () => {
-  if (uiLocked) return;
-  uiLocked = true;
-  endBtn.disabled = true;
-  endTurn();
-};
-document.getElementById('restart').onclick=()=>{ setSeed(CURRENT_SEED); const aiCount=+document.getElementById('aiCount').value||0; const allied=+document.getElementById('aiAllied').value; const diff=+document.getElementById('difficulty').value||2; genMap(CURRENT_SIZE,aiCount,allied,diff); uiLocked=false; endBtn.disabled=false; render(); centerBoard(); addLog(`Relance de la carte (seed ${CURRENT_SEED})`,null,1); };
-document.getElementById('menu').onclick=()=>{ uiLocked=false; endBtn.disabled=false; showStart(); };
-
-function applyBankruptcy(owner){ const upk=upkeep(owner); if((gold[owner]||0)>=upk) return; for(const c of S){ if(c.unit&&c.unit.owner===owner)c.unit=null; if(c.ship&&c.ship.owner===owner)c.ship=null; } gold[owner]=Math.max(0,gold[owner]||0); addLog(`${owner===1?'Joueur':('IA '+(owner-1))} en banqueroute : armée dissoute`,`Loyer (${upk.toFixed(1)}) > or disponible.`,owner); }
-function endTurn(){
-  const inc=income(turn); gold[turn]=(gold[turn]||0)+inc; const upk=upkeep(turn); gold[turn]-=upk;
-  addLog(`Tour ${turn===1?'Joueur':'IA '+(turn-1)} : +${inc} or, -${upk.toFixed(1)} or de loyer`,null,turn);
-  recalcMoved(false); selected=null;
-
-  turn++;
-  if (turn > TOTAL_PLAYERS) {  turn = 1;  YEAR++;}
-
-  applyBankruptcy(turn);
-  render(); checkVictory();
-  if(turn!==1){
-    setTimeout(()=>aiTurn(turn),250);
-  }else{
-    uiLocked=false;
-    endBtn.disabled=false;
-  }
-}
-function checkVictory(){ const aiAlive=S.some(c=>(c.unit&&c.unit.owner>1)||(c.structure==='city'&&c.owner>1)); const playerAlive=S.some(c=>(c.unit&&c.unit.owner===1)||(c.structure==='city'&&c.owner===1)); if(!aiAlive) setTimeout(()=>alert("Victoire !"),60); if(!playerAlive) setTimeout(()=>alert("Défaite…"),60); }
-function aiTurn(owner){
-  const RESERVE=[2,4,6,10][DIFFICULTY-1]||4;
-
-  // Recrutement en ville
-  const vAI=S.filter(c=>c.structure==='city'&&c.owner===owner&&!c.unit&&!c.ship);
-  for(const v of vAI){
-    const tryRecruit=t=>{ const cost=recruitCost(t,owner), upk=UNITS[t].upkeep, inc=income(owner), nextGold=(gold[owner]||0)-cost+inc-(upkeep(owner)+upk);
-      if((gold[owner]||0)-cost>=RESERVE && nextGold>=0){ v.unit={owner,type:t,level:1,moved:true}; gold[owner]-=cost; addLog(`IA ${owner-1} recrute un ${UNITS[t].name}`,null,owner); return true; } return false; };
-    if(tryRecruit(3)) continue; if(tryRecruit(2)) continue; tryRecruit(1);
+  function moveShip(sx, sy, dx, dy){
+    const src = cell(sx, sy), dst = cell(dx, dy);
+    if (!src?.ship || src.ship.moved || src.ship.owner !== 1 || dst?.ship) return;
+    if (!passableForShip(src, dst, 1, src.ship.kind)) return;
+    dst.ship = { ...src.ship, moved: true };
+    src.ship = null;
   }
 
-  // Mise à l'eau (limite selon surface)
-  const tilesAI=S.filter(c=>c.owner===owner&&(c.terrain==='land'||c.terrain==='forest')).length;
-  const maxShips=Math.max(1,Math.floor(tilesAI/(DIFFICULTY>=3?6:8))); const curShips=S.filter(c=>c.ship&&c.ship.owner===owner).length;
-  if(curShips<maxShips){
-    const coastal=S.find(c=>c.unit&&c.unit.owner===owner&&neighbors(c.x,c.y).some(([nx,ny])=>{const t=cell(nx,ny);return !!t && t.terrain!=='land'&&!t.ship;}));
-    if(coastal){
-      const seaShallow=neighbors(coastal.x,coastal.y).find(([nx,ny])=>{const t=cell(nx,ny);return t?.terrain==='shallow'&&!t.ship;});
-      const tryShip=seaShallow?'sloop':'brig', shipDef=SHIPS[tryShip], cost=shipDef.cost, upk=shipDef.upkeep, inc=income(owner);
-      const nextGold=(gold[owner]||0)-cost+inc-(upkeep(owner)+upk);
-      if((gold[owner]||0)-cost>=RESERVE && nextGold>=0){
-        const pos=seaShallow?seaShallow:neighbors(coastal.x,coastal.y).find(([nx,ny])=>{const t=cell(nx,ny);return !!t && (t.terrain==='deep'||t.terrain==='shallow')&&!t.ship;});
-        if(pos){ const [sx,sy]=pos; gold[owner]-=cost; cell(sx,sy).ship={owner,kind:tryShip,cargo:[{...coastal.unit}],moved:true,hp:shipDef.hp}; coastal.unit=null; addLog(`IA ${owner-1} met un ${shipDef.name.toLowerCase()} à l’eau`,null,owner); }
+  function moveShipAI(sx, sy, dx, dy, owner){
+    const src = cell(sx, sy), dst = cell(dx, dy);
+    if (!src?.ship || src.ship.moved || src.ship.owner !== owner || dst?.ship) return;
+    if (!passableForShip(src, dst, owner, src.ship.kind)) return;
+    dst.ship = { ...src.ship, moved: true }; src.ship = null;
+  }
+
+  function capacityLeft(shipCellObj){
+    const ship=shipCellObj.ship||shipCellObj;
+    return SHIPS[ship.kind].cap - (ship.cargo?.reduce((a,u)=>a+(u.level||1),0)||0);
+  }
+
+  function makeShip(kind){
+    const u=cell(selected?.x,selected?.y);
+    if(!u?.unit || u.unit.moved || u.unit.owner!==1) return;
+    const adj=neighbors(selected.x,selected.y).find(([nx,ny])=>{
+      const t=cell(nx,ny);
+      if(!t||t.ship) return false;
+      const rule=SHIPS[kind].water;
+      if(rule==='shallow'&&t.terrain!=='shallow') return false;
+      if(rule==='both'&&!(t.terrain==='shallow'||t.terrain==='deep')) return false;
+      return true;
+    });
+    if(!adj){addLog("Pas d'eau libre adjacente.",null,1);return;}
+    if((gold[1]||0) < SHIPS[kind].cost){addLog("Pas assez d'or.",null,1);return;}
+    gold[1]-=SHIPS[kind].cost;
+    const [sx,sy]=adj;
+    cell(sx,sy).ship={owner:1,kind,cargo:[],moved:true,hp:SHIPS[kind].hp};
+    addLog(`${SHIPS[kind].name} mis à l’eau`,`En ${sx},${sy} (capacité ${SHIPS[kind].cap})`,1);
+    render();
+  }
+
+  function loadShip(){
+    const s=cell(selected?.x,selected?.y);
+    if(!s?.ship||s.ship.moved||s.ship.owner!==1) return;
+    if(!s.ship.cargo) s.ship.cargo=[];
+    const capLeft=capacityLeft(s);
+    const pos=neighbors(selected.x,selected.y).find(([nx,ny])=>{
+      const t=cell(nx,ny);
+      return t?.unit && t.unit.owner===1 && (t.unit.level||1)<=capLeft;
+    });
+    if(!pos){addLog("Aucune unité admissible à embarquer (capacité insuffisante).",null,1);return;}
+    const [ux,uy]=pos; const u=cell(ux,uy);
+    s.ship.cargo.push({...u.unit});
+    u.unit=null;
+    addLog('Embarquement',`Depuis ${ux},${uy}`,1);
+    render();
+  }
+
+  function disembark(){
+    const s = cell(selected?.x, selected?.y);
+    if (!s?.ship || s.ship.moved || s.ship.owner!==1 || !(s.ship.cargo && s.ship.cargo.length)) return;
+
+    const spot = neighbors(selected.x, selected.y).find(([nx, ny]) => {
+      const t = cell(nx, ny);
+      return !!t && (t.terrain === 'land' || t.terrain === 'forest') && !t.unit
+        && !(t.structure === 'tower' && isEnemy(1, t.owner))
+        && (t.owner === 0 || canAnnex(1, nx, ny));
+    });
+
+    if (!spot) { addLog("Débarquement interdit : aucun emplacement valide (terre libre requise).", null, 1); return; }
+
+    const [dx, dy] = spot;
+    const t = cell(dx, dy);
+    const u = s.ship.cargo.shift();
+
+    t.unit = { ...u, moved: true };
+    t.owner = 1;
+    s.ship.moved = true;
+
+    addLog('Débarquement', `En ${dx},${dy}`, 1);
+    render();
+  }
+
+  /* ====== Panneau d’actions ====== */
+  const B=id=>document.getElementById(id);
+
+  B('buildCity').onclick=()=>{
+    if(!selected) return;
+    const c=cell(selected.x,selected.y);
+    const cc=cityCost(1);
+    if((gold[1]||0)<cc||c?.structure!=='none'||c?.terrain!=='land') return;
+    c.structure='city'; c.owner=1; gold[1]-=cc;
+    addLog('Ville fondée',`En ${selected.x},${selected.y} (coût ${cc} or)`,1);
+    render();
+  };
+  B('buildTower').onclick=()=>{
+    if(!selected) return;
+    const c=cell(selected.x,selected.y);
+    if((gold[1]||0)<3||c?.structure!=='none'||c?.terrain!=='land') return;
+    c.structure='tower'; c.owner=1; gold[1]-=3;
+    addLog('Tour bâtie',`En ${selected.x},${selected.y}`,1);
+    render();
+  };
+
+  B('makeSloop').onclick = ()=>makeShip('sloop');
+  B('makeBrig').onclick  = ()=>makeShip('brig');
+  B('makeGalleon').onclick=()=>makeShip('galleon');
+  B('loadShip').onclick  = ()=>loadShip();
+  B('disembark').onclick = ()=>disembark();
+
+  B('recFarmer').onclick  = ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,1); };
+  B('recMilitia').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,2); };
+  B('recSoldier').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; recruitAtCity(s.x,s.y,3); };
+  B('upFarmMil').onclick  = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,2); };
+  B('upMilSold').onclick  = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,3); };
+
+  function recruitLabel(type, cost){
+    const u = UNITS[type];
+    return `<span class="title">Recruter ${u.name}</span>`+
+           `<span class="meta">Coût ${cost} · Loyer ${u.upkeep} · PM ${u.move}</span>`;
+  }
+
+  function updateActionsPanel(){
+    const wrap = document.getElementById('actions');
+    const sel=selected?cell(selected.x,selected.y):null, myTurn=(turn===1);
+
+    const cc=cityCost(1);
+    B('buildCity').textContent=`Construire Ville (${cc} or)`;
+
+    const onUnit=myTurn&&sel&&selected.kind==='unit'&&sel.unit;
+    const onShip=myTurn&&sel&&selected.kind==='ship'&&sel.ship&&sel.ship.owner===1;
+    const onCity=myTurn&&sel&&selected.kind==='city'&&sel.structure==='city'&&sel.owner===1;
+
+    /* ---- état "joué" (rouge) ---- */
+    let played = false;
+    if (onUnit && sel.unit.moved) played = true;
+    if (onShip && sel.ship.moved) played = true;
+    if (onCity && (sel.cityRecruited || (sel.unit?.owner===1 && sel.unit.moved))) played = true;
+    wrap.dataset.played = played ? '1' : '0';
+
+    /* ---- navires depuis une unité côtière ---- */
+    const coastal=onUnit && !sel.unit.moved && neighbors(selected.x,selected.y).some(([nx,ny])=>{
+      const t=cell(nx,ny); return !!t && (t.terrain==='shallow'||t.terrain==='deep') && !t.ship;
+    });
+    B('makeSloop').disabled   = !(coastal && (gold[1]||0)>=SHIPS.sloop.cost);
+    B('makeBrig').disabled    = !(coastal && (gold[1]||0)>=SHIPS.brig.cost);
+    B('makeGalleon').disabled = !(coastal && (gold[1]||0)>=SHIPS.galleon.cost);
+
+    /* ---- bâtir sur terrain vide possédé ---- */
+    const ownEmptyLand=myTurn&&sel&&selected.kind==='empty'&&sel.terrain==='land'&&sel.structure==='none';
+    B('buildCity').disabled = !(ownEmptyLand&&(gold[1]||0)>=cc);
+    B('buildTower').disabled= !(ownEmptyLand&&(gold[1]||0)>=3);
+
+    /* ---- cargo/ débarquement ---- */
+    B('loadShip').disabled = !(onShip && !sel.ship.moved && capacityLeft(sel)>0 && neighbors(selected.x,selected.y).some(([nx,ny])=>{
+      const t=cell(nx,ny); return t?.unit && t.unit.owner===1 && (t.unit.level||1)<=capacityLeft(sel);
+    }));
+    B('disembark').disabled = !(onShip && !sel.ship.moved && (sel.ship.cargo?.length||0)>0 && neighbors(selected.x,selected.y).some(([nx,ny])=>{
+      const t = cell(nx,ny);
+      return !!t && (t.terrain==='land' || t.terrain==='forest') && !t.unit
+        && !(t.structure==='tower' && isEnemy(1,t.owner))
+        && (t.owner===0 || canAnnex(1,nx,ny));
+    }));
+
+    /* ---- ville : 1 recrutement max/ tour ---- */
+    const occupied = !!(onCity && (sel.unit || sel.ship));
+    const cF = recruitCost(1,1), cM = recruitCost(2,1), cS = recruitCost(3,1);
+    B('recFarmer').innerHTML  = recruitLabel(1, cF);
+    B('recMilitia').innerHTML = recruitLabel(2, cM);
+    B('recSoldier').innerHTML = recruitLabel(3, cS);
+
+    const canRecruit = onCity && !occupied && !sel?.cityRecruited;
+    B('recFarmer').disabled  = !(canRecruit && (gold[1]||0)>=cF);
+    B('recMilitia').disabled = !(canRecruit && (gold[1]||0)>=cM);
+    B('recSoldier').disabled = !(canRecruit && (gold[1]||0)>=cS);
+
+    /* ---- upgrades de l’unité en ville ---- */
+    let canUpFM=false, canUpMS=false, labFM='Améliorer Fermier → Milice', labMS='Améliorer Milice → Soldat';
+    if(onCity && sel.unit && sel.unit.owner===1){
+      if(sel.unit.type===1){ const price=upgradeCost(1,2); labFM += ` (${price} or)`; canUpFM=(gold[1]||0)>=price; }
+      if(sel.unit.type===2){ const price=upgradeCost(2,3); labMS += ` (${price} or)`; canUpMS=(gold[1]||0)>=price; }
+    }
+    B('upFarmMil').textContent = labFM;
+    B('upMilSold').textContent = labMS;
+    B('upFarmMil').disabled = !(onCity && sel?.unit?.owner===1 && sel.unit.type===1 && canUpFM);
+    B('upMilSold').disabled = !(onCity && sel?.unit?.owner===1 && sel.unit.type===2 && canUpMS);
+
+    /* ---- message d’aide si rien ---- */
+    const ids = [
+      'buildCity','buildTower',
+      'recFarmer','recMilitia','recSoldier',
+      'upFarmMil','upMilSold',
+      'makeSloop','makeBrig','makeGalleon',
+      'loadShip','disembark'
+    ];
+    const anyVisible = ids.some(id => !B(id).disabled);
+    let msg = document.getElementById('actionsMsg');
+    if (!msg){
+      msg = document.createElement('div');
+      msg.id = 'actionsMsg';
+      msg.className = 'hint-msg';
+      document.getElementById('actions').appendChild(msg);
+    }
+    if (anyVisible){
+      msg.style.display = 'none';
+    } else {
+      msg.textContent = selected
+        ? (played ? "Tour déjà joué ici." : "Aucune action possible ici.")
+        : "Clique sur un territoire, une ville ou une unité pour accéder à ses actions.";
+      msg.style.display = 'block';
+    }
+  }
+
+  function recruitAtCity(x,y,type){
+    const c=cell(x,y);
+    if(!c||c.structure!=='city'||c.owner!==1){ addLog("Sélectionne d'abord ta ville.",null,1); return; }
+    if(c.cityRecruited){ addLog("Recrutement déjà effectué", "Une ville ne peut recruter qu’une fois par tour.", 1); return; }
+    if(c.unit || c.ship){ addLog("Recrutement impossible","La ville est occupée.",1); return; }
+    const cost=recruitCost(type,1);
+    if((gold[1]||0) < cost){ addLog("Pas assez d'or",`Coût ${cost} or`,1); return; }
+    gold[1] -= cost;
+    c.unit = { owner:1, type, level:1, moved:true };
+    c.cityRecruited = true;  // verrou par tour
+    addLog(`Recrutement: ${UNITS[type].name}`, `En ${x},${y} (coût ${cost})`, 1);
+    render();
+  }
+
+  function tryUpgradeAtCity(x,y,toTypeMaybe){
+    const c=cell(x,y);
+    if(!c||c.structure!=='city'||c.owner!==1||!c.unit||c.unit.owner!==1){ addLog("Aucune unité à améliorer dans la ville.",null,1); return; }
+    let to = toTypeMaybe || (c.unit.type===1?2:(c.unit.type===2?3:3));
+    if(c.unit.type===3){ addLog("Déjà au rang maximum.",null,1); return; }
+    const cost=upgradeCost(c.unit.type,to);
+    if((gold[1]||0)<cost){ addLog("Or insuffisant pour l'amélioration",`Coût ${cost} or`,1); return; }
+    gold[1]-=cost; c.unit.type=to; c.unit.moved=true;
+    addLog(`Amélioration: ${UNITS[to].name}`,`En ${x},${y} (coût ${cost})`,1);
+    render();
+  }
+
+  /* ==================== Fin de tour & IA ==================== */
+  endBtn.onclick = () => {
+    if (uiLocked) return;
+    uiLocked = true;
+    endBtn.disabled = true;
+    endTurn();
+  };
+  document.getElementById('restart').onclick=()=>{
+    setSeed(CURRENT_SEED);
+    const aiCount=+document.getElementById('aiCount').value||0;
+    const allied=+document.getElementById('aiAllied').value;
+    const diff=+document.getElementById('difficulty').value||2;
+    genMap(CURRENT_SIZE,aiCount,allied,diff);
+    uiLocked=false; endBtn.disabled=false; render(); centerBoard();
+    addLog(`Relance de la carte (seed ${CURRENT_SEED})`,null,1);
+  };
+  document.getElementById('menu').onclick=()=>{ uiLocked=false; endBtn.disabled=false; showStart(); };
+
+  function applyBankruptcy(owner){
+    const upk=upkeep(owner);
+    if((gold[owner]||0)>=upk) return;
+    for(const c of S){ if(c.unit&&c.unit.owner===owner)c.unit=null; if(c.ship&&c.ship.owner===owner)c.ship=null; }
+    gold[owner]=Math.max(0,gold[owner]||0);
+    addLog(`${owner===1?'Joueur':('IA '+(owner-1))} en banqueroute : armée dissoute`,`Loyer (${upk.toFixed(1)}) > or disponible.`,owner);
+  }
+  function endTurn(){
+    const inc=income(turn); gold[turn]=(gold[turn]||0)+inc; const upk=upkeep(turn); gold[turn]-=upk;
+    addLog(`Tour ${turn===1?'Joueur':'IA '+(turn-1)} : +${inc} or, -${upk.toFixed(1)} or de loyer`,null,turn);
+    recalcMoved(false); selected=null;
+
+    turn++;
+    if (turn > TOTAL_PLAYERS) {  turn = 1;  YEAR++;}
+
+    applyBankruptcy(turn);
+    render(); checkVictory();
+    if(turn!==1){
+      setTimeout(()=>aiTurn(turn),250);
+    }else{
+      uiLocked=false;
+      endBtn.disabled=false;
+    }
+  }
+  function checkVictory(){
+    const aiAlive=S.some(c=>(c.unit&&c.unit.owner>1)||(c.structure==='city'&&c.owner>1));
+    const playerAlive=S.some(c=>(c.unit&&c.unit.owner===1)||(c.structure==='city'&&c.owner===1));
+    if(!aiAlive) setTimeout(()=>alert("Victoire !"),60);
+    if(!playerAlive) setTimeout(()=>alert("Défaite…"),60);
+  }
+  function aiTurn(owner){
+    const RESERVE=[2,4,6,10][DIFFICULTY-1]||4;
+
+    // Recrutement en ville (respecte la règle 1 par tour via cityRecruited)
+    const vAI=S.filter(c=>c.structure==='city'&&c.owner===owner&&!c.unit&&!c.ship&&!c.cityRecruited);
+    for(const v of vAI){
+      const tryRecruit=t=>{
+        const cost=recruitCost(t,owner), upk=UNITS[t].upkeep, inc=income(owner);
+        const nextGold=(gold[owner]||0)-cost+inc-(upkeep(owner)+upk);
+        if((gold[owner]||0)-cost>=RESERVE && nextGold>=0){
+          v.unit={owner,type:t,level:1,moved:true}; gold[owner]-=cost; v.cityRecruited=true;
+          addLog(`IA ${owner-1} recrute un ${UNITS[t].name}`,null,owner); return true;
+        }
+        return false;
+      };
+      if(tryRecruit(3)) continue; if(tryRecruit(2)) continue; tryRecruit(1);
+    }
+
+    // Mise à l'eau (limite selon surface)
+    const tilesAI=S.filter(c=>c.owner===owner&&(c.terrain==='land'||c.terrain==='forest')).length;
+    const maxShips=Math.max(1,Math.floor(tilesAI/(DIFFICULTY>=3?6:8)));
+    const curShips=S.filter(c=>c.ship&&c.ship.owner===owner).length;
+    if(curShips<maxShips){
+      const coastal=S.find(c=>c.unit&&c.unit.owner===owner&&neighbors(c.x,c.y).some(([nx,ny])=>{
+        const t=cell(nx,ny);return !!t && t.terrain!=='land'&&!t.ship;
+      }));
+      if(coastal){
+        const seaShallow=neighbors(coastal.x,coastal.y).find(([nx,ny])=>{
+          const t=cell(nx,ny);return t?.terrain==='shallow'&&!t.ship;
+        });
+        const tryShip=seaShallow?'sloop':'brig', shipDef=SHIPS[tryShip], cost=shipDef.cost, upk=shipDef.upkeep, inc=income(owner);
+        const nextGold=(gold[owner]||0)-cost+inc-(upkeep(owner)+upk);
+        if((gold[owner]||0)-cost>=RESERVE && nextGold>=0){
+          const pos=seaShallow?seaShallow:neighbors(coastal.x,coastal.y).find(([nx,ny])=>{
+            const t=cell(nx,ny);return !!t && (t.terrain==='deep'||t.terrain==='shallow')&&!t.ship;
+          });
+          if(pos){
+            const [sx,sy]=pos;
+            gold[owner]-=cost;
+            cell(sx,sy).ship={owner,kind:tryShip,cargo:[{...coastal.unit}],moved:true,hp:shipDef.hp};
+            coastal.unit=null;
+            addLog(`IA ${owner-1} met un ${shipDef.name.toLowerCase()} à l’eau`,null,owner);
+          }
+        }
       }
     }
-  }
 
-  // Déplacements unités
-  const units=S.filter(c=>c.unit&&c.unit.owner===owner);
-  for(const u of units){
-    if(u.unit.moved) continue;
-    const tgt=nearestEnemyOrCity(u.x,u.y,owner);
-    const opts=reachableFrom(u.x,u.y,'unit',u.unit.type);
-    if(opts.length && tgt){
-      opts.sort((a,b)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b[0],y:b[1]},tgt));
-      const [nx,ny]=opts[0];
-      // IA ne doit jamais bouger les pions du joueur
-      moveUnitAI(u.x, u.y, nx, ny, owner);
+    // Déplacements unités
+    const units=S.filter(c=>c.unit&&c.unit.owner===owner);
+    for(const u of units){
+      if(u.unit.moved) continue;
+      const tgt=nearestEnemyOrCity(u.x,u.y,owner);
+      const opts=reachableFrom(u.x,u.y,'unit',u.unit.type);
+      if(opts.length && tgt){
+        opts.sort((a,b)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b[0],y:b[1]},tgt));
+        const [nx,ny]=opts[0];
+        moveUnitAI(u.x, u.y, nx, ny, owner);
+      }
     }
-  }
 
-  // Déplacements navires
-  const boats=S.filter(c=>c.ship&&c.ship.owner===owner);
-  for(const b of boats){
-    if(b.ship.moved) continue;
-    const shore=neighbors(b.x,b.y).find(([nx,ny])=>{
-      const t=cell(nx,ny);
-      return !!t && (t.terrain==='land'||t.terrain==='forest')&&!t.unit&&!(t.structure==='tower'&&isEnemy(owner,t.owner))&& (t.owner===0 || canAnnex(owner,nx,ny));
-    });
-    if(shore && b.ship.cargo&&b.ship.cargo.length){ const [dx,dy]=shore; const t=cell(dx,dy); t.unit={...b.ship.cargo.shift(),moved:true}; t.owner=owner; b.ship.moved=true; addLog(`IA ${owner-1} débarque`,null,owner); continue; }
-    const tgt=nearestPlayerCoast(owner); const opts=reachableFrom(b.x,b.y,'ship',b.ship.kind);
-    if (tgt && opts.length){opts.sort((a,b2)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b2[0],y:b2[1]},tgt));const [nx,ny] = opts[0]; moveShipAI(b.x, b.y, nx, ny, owner);}
-  }
-
-  render(); checkVictory(); endTurn();
-}
-function nearestEnemyOrCity(x,y,owner){ let best=null,bestD=1e9; for(const c of S){ if(((c.unit&&isEnemy(owner,c.unit.owner))||(c.structure==='city'&&isEnemy(owner,c.owner)))){ const d=hexDist({x,y},c); if(d<bestD){bestD=d;best=c;} } } return best; }
-function nearestPlayerCoast(owner){ let best=null,bestD=1e9; for(const c of S){ if((c.terrain==='shallow'||c.terrain==='deep')&&neighbors(c.x,c.y).some(([nx,ny])=>{const t=cell(nx,ny);return !!t && isEnemy(owner,t.owner) && (t.terrain==='land'||t.terrain==='forest');})){ const d=Math.abs(c.x-(W>>1))+Math.abs(c.y-(H>>1)); if(d<bestD){bestD=d;best=c;} } } return best; }
-
-/* ==================== Zoom + Drag handlers ==================== */
-document.getElementById('zoomIn').addEventListener('click', ()=>{
-  zoom = Math.min(MAX_ZOOM, +(zoom + ZOOM_STEP).toFixed(2)); applyView();
-});
-document.getElementById('zoomOut').addEventListener('click', ()=>{
-  zoom = Math.max(MIN_ZOOM, +(zoom - ZOOM_STEP).toFixed(2)); applyView();
-});
-const DRAG_THRESHOLD = 6;   // px avant de considérer que c'est un drag
-let isMouseDown = false;    // état du bouton gauche
-
-boardEl.addEventListener('mousedown', (e)=>{
-  if (e.button !== 0) return;
-  isMouseDown = true;
-  isDragging = false;               // on ne drag pas encore
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  panStartX  = panX;
-  panStartY  = panY;
-  // NE PAS ajouter la classe 'dragging' ici
-});
-
-window.addEventListener('mousemove', (e)=>{
-  if (!isMouseDown) return;
-
-  const dx = e.clientX - dragStartX;
-  const dy = e.clientY - dragStartY;
-
-  // on démarre le drag SEULEMENT si on dépasse le seuil
-  if (!isDragging){
-    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD){
-      isDragging = true;
-      boardEl.classList.add('dragging');
-    } else {
-      return; // mouvements minuscules ignorés : aucun pan, aucun "justPanned"
+    // Déplacements navires
+    const boats=S.filter(c=>c.ship&&c.ship.owner===owner);
+    for(const b of boats){
+      if(b.ship.moved) continue;
+      const shore=neighbors(b.x,b.y).find(([nx,ny])=>{
+        const t=cell(nx,ny);
+        return !!t && (t.terrain==='land'||t.terrain==='forest')&&!t.unit
+          && !(t.structure==='tower'&&isEnemy(owner,t.owner))
+          && (t.owner===0 || canAnnex(owner,nx,ny));
+      });
+      if(shore && b.ship.cargo&&b.ship.cargo.length){
+        const [dx,dy]=shore; const t=cell(dx,dy);
+        t.unit={...b.ship.cargo.shift(),moved:true}; t.owner=owner; b.ship.moved=true;
+        addLog(`IA ${owner-1} débarque`,null,owner); continue;
+      }
+      const tgt=nearestPlayerCoast(owner);
+      const opts=reachableFrom(b.x,b.y,'ship',b.ship.kind);
+      if (tgt && opts.length){
+        opts.sort((a,b2)=>hexDist({x:a[0],y:a[1]},tgt)-hexDist({x:b2[0],y:b2[1]},tgt));
+        const [nx,ny] = opts[0];
+        moveShipAI(b.x, b.y, nx, ny, owner);
+      }
     }
+
+    render(); checkVictory(); endTurn();
+  }
+  function nearestEnemyOrCity(x,y,owner){
+    let best=null,bestD=1e9;
+    for(const c of S){
+      if(((c.unit&&isEnemy(owner,c.unit.owner))||(c.structure==='city'&&isEnemy(owner,c.owner)))){
+        const d=hexDist({x,y},c);
+        if(d<bestD){bestD=d;best=c;}
+      }
+    }
+    return best;
+  }
+  function nearestPlayerCoast(owner){
+    let best=null,bestD=1e9;
+    for(const c of S){
+      if((c.terrain==='shallow'||c.terrain==='deep')&&neighbors(c.x,c.y).some(([nx,ny])=>{
+        const t=cell(nx,ny);
+        return !!t && isEnemy(owner,t.owner) && (t.terrain==='land'||t.terrain==='forest');
+      })){
+        const d=Math.abs(c.x-(W>>1))+Math.abs(c.y-(H>>1));
+        if(d<bestD){bestD=d;best=c;}
+      }
+    }
+    return best;
   }
 
-  panX = panStartX + dx;
-  panY = panStartY + dy;
-  applyView();
-  justPanned = true; // vrai UNIQUEMENT si on a réellement draggué
+  /* ==================== Zoom + Drag ==================== */
+  document.getElementById('zoomIn').addEventListener('click', ()=>{
+    zoom = Math.min(MAX_ZOOM, +(zoom + ZOOM_STEP).toFixed(2)); applyView();
+  });
+  document.getElementById('zoomOut').addEventListener('click', ()=>{
+    zoom = Math.max(MIN_ZOOM, +(zoom - ZOOM_STEP).toFixed(2)); applyView();
   });
 
-window.addEventListener('mouseup', ()=>{
-  if (!isMouseDown) return;
-  isMouseDown = false;
-
-  if (isDragging){
+  boardEl.addEventListener('mousedown', (e)=>{
+    if (e.button !== 0) return;
+    isMouseDown = true;
     isDragging = false;
-    boardEl.classList.remove('dragging');
-    setTimeout(()=>{ justPanned=false; }, 40);
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    panStartX  = panX;
+    panStartY  = panY;
+  }, {passive:true});
+
+  window.addEventListener('mousemove', (e)=>{
+    if (!isMouseDown) return;
+
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+
+    if (!isDragging){
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD){
+        isDragging = true;
+        boardEl.classList.add('dragging');
+      } else {
+        return; // mouvements minuscules ignorés
+      }
+    }
+
+    panX = panStartX + dx;
+    panY = panStartY + dy;
+    applyView();
+    justPanned = true;
+    e.preventDefault(); // limite la sélection/scroll -> supprime les soubresauts
+  }, {passive:false});
+
+  window.addEventListener('mouseup', ()=>{
+    if (!isMouseDown) return;
+    isMouseDown = false;
+
+    if (isDragging){
+      isDragging = false;
+      boardEl.classList.remove('dragging');
+      clickSuppressUntil = Date.now() + 150; // fenêtre anti-clic
+      setTimeout(()=>{ justPanned=false; }, 50);
+    }
+  }, {passive:true});
+
+  /* ==================== Start / init ==================== */
+  function setPlayerColor(hex){ playerColor=hex; document.documentElement.style.setProperty('--my',playerColor); }
+  function buildSwatches(){
+    const wrap=document.getElementById('swatches'); wrap.innerHTML='';
+    PLAYER_COLORS.forEach((c,i)=>{
+      const b=document.createElement('div');
+      b.className='swatch'; b.style.background=c.v; b.dataset.sel=(i===1?'1':'0'); b.title=c.n;
+      b.addEventListener('click',()=>{
+        wrap.querySelectorAll('.swatch').forEach(s=>s.dataset.sel='0');
+        b.dataset.sel='1'; setPlayerColor(c.v); render();
+      });
+      wrap.appendChild(b);
+    });
+    setPlayerColor(PLAYER_COLORS[1].v);
   }
+  function showStart(){ document.getElementById('start').classList.add('show'); }
+  function hideStart(){ document.getElementById('start').classList.remove('show'); }
+
+  document.querySelectorAll('#start button[data-size]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const key=b.dataset.size, seedField=document.getElementById('seedInput'), seedText=(seedField?.value||'').trim();
+      if(seedText==='') setSeed(Math.floor(Math.random()*2**31)>>>0); else setSeed(seedText);
+      const aiCount=+document.getElementById('aiCount').value||0, allied=+document.getElementById('aiAllied').value, diff=+document.getElementById('difficulty').value||2;
+      CURRENT_SIZE=key; genMap(key,aiCount,allied,diff); hideStart(); uiLocked=false; endBtn.disabled=false; render(); centerBoard();
+      addLog(`Nouvelle partie (${key}, seed ${CURRENT_SEED}, IA ${aiCount}, alliées=${!!+allied}, diff ${diff})`,null,1);
+    });
+  });
+  document.getElementById('diceSeed').addEventListener('click',()=>{
+    const r=(Math.floor(Math.random()*2**31)>>>0); document.getElementById('seedInput').value=r;
   });
 
-
-/* ==================== Start / init ==================== */
-function setPlayerColor(hex){ playerColor=hex; document.documentElement.style.setProperty('--my',playerColor); }
-function buildSwatches(){ const wrap=document.getElementById('swatches'); wrap.innerHTML=''; PLAYER_COLORS.forEach((c,i)=>{ const b=document.createElement('div'); b.className='swatch'; b.style.background=c.v; b.dataset.sel=(i===1?'1':'0'); b.title=c.n; b.addEventListener('click',()=>{wrap.querySelectorAll('.swatch').forEach(s=>s.dataset.sel='0'); b.dataset.sel='1'; setPlayerColor(c.v); render();}); wrap.appendChild(b);}); setPlayerColor(PLAYER_COLORS[1].v); }
-function showStart(){ document.getElementById('start').classList.add('show'); }
-function hideStart(){ document.getElementById('start').classList.remove('show'); }
-
-document.querySelectorAll('#start button[data-size]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const key=b.dataset.size, seedField=document.getElementById('seedInput'), seedText=(seedField?.value||'').trim();
-    if(seedText==='') setSeed(Math.floor(Math.random()*2**31)>>>0); else setSeed(seedText);
-    const aiCount=+document.getElementById('aiCount').value||0, allied=+document.getElementById('aiAllied').value, diff=+document.getElementById('difficulty').value||2;
-    CURRENT_SIZE=key; genMap(key,aiCount,allied,diff); hideStart(); uiLocked=false; endBtn.disabled=false; render(); centerBoard(); addLog(`Nouvelle partie (${key}, seed ${CURRENT_SEED}, IA ${aiCount}, alliées=${!!+allied}, diff ${diff})`,null,1);
+  window.addEventListener('DOMContentLoaded',()=>{
+    buildSwatches(); setSeed(Math.floor(Math.random()*2**31)>>>0);
+    const seedInput=document.getElementById('seedInput'); if(seedInput) seedInput.value=CURRENT_SEED; showStart();
+    setTimeout(()=>{ if(!document.getElementById('start').classList.contains('show')){ genMap('small',1,true,2); render(); } },120);
   });
-});
-document.getElementById('diceSeed').addEventListener('click',()=>{ const r=(Math.floor(Math.random()*2**31)>>>0); document.getElementById('seedInput').value=r; });
+  window.addEventListener('error',(e)=>{
+    const log=document.getElementById('log');
+    if(log) log.innerHTML=`<div style="color:#a00">Erreur JS: ${e.message}</div>`+log.innerHTML;
+  });
 
-window.addEventListener('DOMContentLoaded',()=>{
-  buildSwatches(); setSeed(Math.floor(Math.random()*2**31)>>>0); const seedInput=document.getElementById('seedInput'); if(seedInput) seedInput.value=CURRENT_SEED; showStart();
-  setTimeout(()=>{ if(!document.getElementById('start').classList.contains('show')){ genMap('small',1,true,2); render(); } },120);
-});
-window.addEventListener('error',(e)=>{ const log=document.getElementById('log'); if(log) log.innerHTML=`<div style="color:#a00">Erreur JS: ${e.message}</div>`+log.innerHTML; });
 })(); /* IIFE end */
 </script>
 </body>
