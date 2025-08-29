@@ -110,6 +110,11 @@
       radial-gradient(70% 70% at 100% 90%, #0000000d 0 50%, #0000 75%),
       linear-gradient(180deg, #fff, #fdfbf7 55%, #faf6ef);
     overflow:hidden; cursor:grab;
+      touch-action: none;             /* empêche le scroll natif, on gère le drag nous-mêmes */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
   }
   #board.dragging{cursor:grabbing}
 
@@ -1484,23 +1489,71 @@ function initStartUI(){
     zoom = Math.max(MIN_ZOOM, +(zoom-ZOOM_STEP).toFixed(2)); applyView();
   };
 
-  boardEl.addEventListener('mousedown', (e)=>{
-    isDragging=true; justPanned=false;
-    dragStartX=e.clientX; dragStartY=e.clientY;
-    panStartX=panX; panStartY=panY;
-    boardEl.classList.add('dragging');
+  // --- Drag au doigt/souris avec Pointer Events ---
+let moveThreshold = 4;   // px avant de considérer que c'est un drag
+let moved = 0;
+
+function onPtrDown(e){
+  if (e.button !== undefined && e.button !== 0) return; // bouton principal only
+  isDragging = true;
+  justPanned = false;
+  moved = 0;
+
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  panStartX  = panX;
+  panStartY  = panY;
+
+  boardEl.setPointerCapture?.(e.pointerId);
+  boardEl.classList.add('dragging');
+}
+
+function onPtrMove(e){
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+  if (moved > moveThreshold) justPanned = true;
+
+  panX = panStartX + dx;
+  panY = panStartY + dy;
+  applyView();
+}
+
+function onPtrUp(e){
+  if (!isDragging) return;
+  isDragging = false;
+  boardEl.releasePointerCapture?.(e.pointerId);
+  boardEl.classList.remove('dragging');
+  // petit délai pour bloquer le "click" fantôme après un drag
+  setTimeout(()=>{ justPanned = false; }, 80);
+}
+
+// Enregistrements
+if ('PointerEvent' in window){
+  boardEl.addEventListener('pointerdown', onPtrDown);
+  boardEl.addEventListener('pointermove', onPtrMove);
+  boardEl.addEventListener('pointerup', onPtrUp);
+  boardEl.addEventListener('pointercancel', onPtrUp);
+} else {
+  // Fallback très large (vieux navigateurs) : souris + touch
+  boardEl.addEventListener('mousedown', (e)=>onPtrDown(e));
+  window.addEventListener('mousemove', (e)=>onPtrMove(e));
+  window.addEventListener('mouseup',   (e)=>onPtrUp(e));
+
+  boardEl.addEventListener('touchstart', (e)=>{
+    const t = e.touches[0]; if(!t) return;
+    onPtrDown({clientX:t.clientX, clientY:t.clientY});
+  }, {passive:true});
+  boardEl.addEventListener('touchmove', (e)=>{
+    const t = e.touches[0]; if(!t) return;
+    onPtrMove({clientX:t.clientX, clientY:t.clientY});
+  }, {passive:true});
+  boardEl.addEventListener('touchend', (e)=>{
+    onPtrUp({});
   });
-  window.addEventListener('mousemove', (e)=>{
-    if(!isDragging) return;
-    panX = panStartX + (e.clientX - dragStartX);
-    panY = panStartY + (e.clientY - dragStartY);
-    justPanned = true; applyView();
-  });
-  window.addEventListener('mouseup', ()=>{
-    if(!isDragging) return;
-    isDragging=false; boardEl.classList.remove('dragging');
-    setTimeout(()=>justPanned=false, 50);
-  });
+}
+
 }
 
 initStartUI();

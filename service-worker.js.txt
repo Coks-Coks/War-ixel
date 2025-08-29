@@ -1,5 +1,5 @@
 // ↑↑ Incrémente ce suffixe quand tu publies (v2, v3, …)
-const CACHE_NAME = 'war-ixel-cache-v1';
+const CACHE_NAME = 'war-ixel-cache-v2';
 
 const ASSETS = [
   './',                 // chemin relatif = GH Pages OK
