@@ -158,7 +158,7 @@
   .swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .swatch{width:28px;height:28px;border-radius:6px;border:2px solid #ddd;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
   .swatch[data-sel="1"]{outline:3px solid #0003}
-  
+
   .hex.frontier{ box-shadow: inset 0 0 0 2px rgba(0,0,0,.12); }
   .hex.frontier.owned1{ box-shadow: inset 0 0 0 2px rgba(30,58,138,.35); }
   .hex.frontier.owned2{ box-shadow: inset 0 0 0 2px rgba(183,28,28,.35); }
@@ -268,6 +268,15 @@ const UNITS={1:{key:1,name:'Fermier',cost:1,upkeep:0.5,move:3},2:{key:2,name:'Mi
 const SHIPS={sloop:{key:'sloop',name:'Sloop',cost:5,upkeep:2.5,move:3,water:'shallow',cap:1,hp:2,atk:1,masts:1},
              brig:{key:'brig',name:'Brigantin',cost:10,upkeep:5,move:2,water:'both',cap:2,hp:3,atk:1.5,masts:2},
              galleon:{key:'galleon',name:'Galion',cost:20,upkeep:10,move:1,water:'both',cap:3,hp:4,atk:2,masts:3}};
+             
+const DEF_BONUS_CITY = 0.5;         // bonus défense si l'unité défend dans SA ville
+const GARRISON_UPKEEP_MULT = 0.5;   // entretien x0.5 pour une unité posée sur SA ville
+
+const SUPPLY_PER_CITY = 3;          // capacité gratuite par ville
+const SUPPLY_PER_LAND = 0.12;       // +cap par tuile terrestre possédée
+const SHIP_SUPPLY = { sloop:1, brig:2, galleon:3 }; // poids supply des navires
+const SUPPLY_OVER_COST = 1.0;       // coût d'entretien par point au-dessus du cap
+
 const CAMO_RANGE = 5;
 const CITY_BASE_COST=10, CITY_SCALE=3;
 const SIZE_PRESETS={small:{W:13,H:11},medium:{W:19,H:15},large:{W:25,H:19},huge:{W:33,H:25}};
@@ -369,29 +378,88 @@ function randomFarLandOnly(points,minD){const candidates=S.filter(c=>(c.terrain=
 function recalcMoved(flag){for(const c of S){if(c.unit)c.unit.moved=flag;if(c.ship)c.ship.moved=flag;}}
 
 function income(o){let inc=0;for(const c of S){if(c.owner===o&&(c.terrain==='land'||c.terrain==='forest'))inc++; if(c.owner===o&&c.structure==='city')inc+=2;} return inc;}
-function upkeep(o){let u=0;for(const c of S){if(c.unit&&c.unit.owner===o)u+=UNITS[c.unit.type].upkeep*(c.unit.level||1); if(c.ship&&c.ship.owner===o)u+=SHIPS[c.ship.kind].upkeep;}return u;}
+// --- NEW: décomposition exacte de l'entretien pour l'UI ---
+function upkeepBreakdown(owner){
+  const byUnit = {1:0, 2:0, 3:0};
+  const byShip = {sloop:0, brig:0, galleon:0};
+  let landOwned = 0, cities = 0, supplyUsed = 0;
+
+  for (const c of S){
+    if (c.owner === owner && (c.terrain==='land' || c.terrain==='forest')) landOwned++;
+    if (c.owner === owner && c.structure === 'city') cities++;
+
+    if (c.unit && c.unit.owner === owner){
+      const lvl = (c.unit.level || 1);
+      let uCost = UNITS[c.unit.type].upkeep * lvl;
+      if (c.structure === 'city' && c.owner === owner) uCost *= GARRISON_UPKEEP_MULT; // -50% en garnison
+      byUnit[c.unit.type] += uCost;
+      supplyUsed += lvl;
+    }
+
+    if (c.ship && c.ship.owner === owner){
+      byShip[c.ship.kind] += SHIPS[c.ship.kind].upkeep;
+      supplyUsed += (SHIP_SUPPLY[c.ship.kind] || 1);
+    }
+  }
+
+  const cap = Math.floor(cities * SUPPLY_PER_CITY + landOwned * SUPPLY_PER_LAND);
+  const over = Math.max(0, supplyUsed - cap);
+  const overCost = over * SUPPLY_OVER_COST;
+
+  const total = +(byUnit[1] + byUnit[2] + byUnit[3] + byShip.sloop + byShip.brig + byShip.galleon + overCost).toFixed(1);
+  return { byUnit, byShip, cap, supplyUsed, over, overCost, total };
+}
+
+// Garde cette signature pour le reste du code (IA, etc.)
+function upkeep(o){ return upkeepBreakdown(o).total; }
+
 function cityCost(o){const owned=S.filter(c=>c.structure==='city'&&c.owner===o).length-1;return CITY_BASE_COST + CITY_SCALE*Math.max(0,owned);}
 function countSummary(o){const units={1:0,2:0,3:0}, ships={sloop:0,brig:0,galleon:0}; for(const c of S){if(c.unit&&c.unit.owner===o)units[c.unit.type]+=(c.unit.level||1); if(c.ship&&c.ship.owner===o)ships[c.ship.kind]++;} return{units,ships};}
 
 function renderSummary(){
-  const box=document.getElementById('summary'); if(!box)return;
-  const me=countSummary(1);
-  const gMe = Math.floor(gold[1] || 0);
-  let enemiesTotal = 0;
-  const enemiesRows = [];
-  for (let o=2; o<=TOTAL_PLAYERS; o++){
-    const g = Math.floor(gold[o] || 0);
-    enemiesTotal += g;
-    enemiesRows.push(`<div>Or ennemi ${o-1}: <b>${g}</b></div>`);
-  }
-  const upk = upkeep(1).toFixed(1);
+  const box = document.getElementById('summary');
+  if (!box) return;
+
+  const counts = countSummary(1);
+  const gMe    = Math.floor(gold[1] || 0);
+  const bd     = upkeepBreakdown(1);
+  const fmt    = (n)=> Number(n).toFixed(1);
+  const net    = Number((gMe - bd.total).toFixed(1));
+
+  // Ennemis (affichage conditionnel selon TOTAL_PLAYERS)
+  const enemies = [];
+  for (let o=2; o<=TOTAL_PLAYERS; o++) enemies.push({ id:o-1, g: Math.floor(gold[o] || 0) });
+
   box.innerHTML = `
-    <div><b>Armée:</b> ${me.units[1]}F ${me.units[2]}M ${me.units[3]}S</div>
-    <div><b>Flotte:</b> ${me.ships.sloop}Sl ${me.ships.brig}Br ${me.ships.galleon}Ga</div>
-    <div><b>Or (toi):</b> ${gMe}</div>
-    ${enemiesRows.join('')}
-    <div><b>Total ennemis:</b> ${enemiesTotal}</div>
-    <div><b>Loyer/tour:</b> ${upk} or</div>`;
+    <ul class="sum-list">
+      <li class="sum-item"><span>Fortune actuelle</span><b>${gMe}</b></li>
+      <li class="sum-item"><span>Frais d'entretien</span><b>${fmt(bd.total)}</b></li>
+      <li class="sum-item"><span>Surcharge logistique</span><b>${fmt(bd.overCost)}</b></li>
+      <li class="sum-item"><span>Solde pour l'année suivante</span><b>${fmt(net)}</b></li>
+    </ul>
+
+    <div class="sum-title">Armée</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span>Fermier</span><b>${counts.units[1]} <span style="opacity:.8">(-${fmt(bd.byUnit[1])} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Milice</span><b>${counts.units[2]} <span style="opacity:.8">(-${fmt(bd.byUnit[2])} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Soldat</span><b>${counts.units[3]} <span style="opacity:.8">(-${fmt(bd.byUnit[3])} pièce d'or)</span></b></li>
+    </ul>
+
+    <div class="sum-title">Flotte</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span>Sloop</span><b>${counts.ships.sloop} <span style="opacity:.8">(-${fmt(bd.byShip.sloop)} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Brigantin</span><b>${counts.ships.brig} <span style="opacity:.8">(-${fmt(bd.byShip.brig)} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Galion</span><b>${counts.ships.galleon} <span style="opacity:.8">(-${fmt(bd.byShip.galleon)} pièce d'or)</span></b></li>
+    </ul>
+
+    <div class="sum-title">Ennemi</div>
+    <ul class="sum-list">
+      <li class="sum-item"><span>Nombre d'ennemi</span><b>${enemies.length}</b></li>
+      ${enemies.map(e => `
+        <li class="sum-item"><span>Or présumé IA ${e.id}</span><b>${e.g}</b></li>
+      `).join('')}
+    </ul>
+  `;
 }
 
 function isEnemy(a,b){ if(a===b) return false; if(AI_ALLIED&&a>1&&b>1) return false; return true; }
@@ -399,10 +467,9 @@ function beats(att,def){ if(att===def) return 0; return (att>def)?1:-1; }
 
 function moveCostUnit(type, from, to, owner){
   if (!to) return Infinity;
-  // Autoriser la ville, interdire les autres structures
-  if (to.structure !== 'none' && to.structure !== 'city') return Infinity;
-  if (to.terrain === 'shallow' || to.terrain === 'deep') return Infinity;
+  // On interdit seulement la tour ennemie ; la ville est autorisée
   if (to.structure === 'tower' && isEnemy(owner, to.owner)) return Infinity;
+  if (to.terrain === 'shallow' || to.terrain === 'deep') return Infinity;
   if (to.terrain === 'forest'){
     if (type === 1 || type === 2) return 2;
     return Infinity;
@@ -412,14 +479,9 @@ function moveCostUnit(type, from, to, owner){
 
 function passableForUnit(from, to, owner, type){
   if (!to) return false;
-  // Ville OK ; autres structures interdites
-  if (to.structure !== 'none' && to.structure !== 'city') return false;
+  if (to.structure === 'tower' && isEnemy(owner, to.owner)) return false; // ville OK
   if (to.terrain === 'shallow' || to.terrain === 'deep') return false;
   if (to.terrain === 'forest' && !(type === 1 || type === 2)) return false;
-  if (to.structure === 'tower' && isEnemy(owner, to.owner)) return false;
-  // Si ville ennemie, il faut pouvoir annexer (adjacent à ton territoire)
-  if (to.structure === 'city' && isEnemy(owner, to.owner) && !canAnnex(owner, to.x, to.y)) return false;
-  // Empêcher d'empiler 2 types différents alliés
   if (to.unit && !isEnemy(owner, to.unit.owner) && to.unit.type !== type) return false;
   return true;
 }
@@ -512,8 +574,31 @@ function enemyHiddenForPlayer(t){
 }
 
 function ownedUnitsOfType(owner,type){let n=0; for(const c of S) if(c.unit&&c.unit.owner===owner&&c.unit.type===type) n+=(c.unit.level||1); return n;}
-function recruitCost(type,owner){ return UNITS[type].cost + Math.floor(ownedUnitsOfType(owner,type)/5); }
-function upgradeCost(fromType,toType){ if(fromType===1&&toType===2) return 2; if(fromType===2&&toType===3) return 3; return 99; }
+function totalUnitLevels(owner){
+  let n = 0;
+  for (const c of S) if (c.unit && c.unit.owner === owner) n += (c.unit.level || 1);
+  return n;
+}
+function recruitCost(type, owner){
+  const base = UNITS[type].cost;
+  const sameType = ownedUnitsOfType(owner, type); // en "niveaux"
+  const all = totalUnitLevels(owner);
+  // +1 tous les 2 niveaux du même type, +1 tous les 6 niveaux au total
+  return base + Math.floor(sameType / 2) + Math.floor(all / 6);
+}
+
+function upgradeCost(fromType, toType){
+  if (fromType===1 && toType===2) return 2;
+  if (fromType===2 && toType===3) return 3;
+  return 99;
+}
+
+function ownedShips(owner){ let n=0; for(const c of S) if(c.ship && c.ship.owner===owner) n++; return n; }
+function ownedShipsOfKind(owner, kind){ let n=0; for(const c of S) if(c.ship && c.ship.owner===owner && c.ship.kind===kind) n++; return n; }
+function shipBuildCost(kind, owner){
+  const base = SHIPS[kind].cost;
+  return base + 2*ownedShipsOfKind(owner, kind) + Math.floor(ownedShips(owner)/2);
+}
 
 let spawnMode = null;
 let spawnChoices = [];
@@ -604,7 +689,11 @@ function moveUnit(sx, sy, dx, dy, _viaReach=false){
   if (dst?.unit && isEnemy(1, dst.unit.owner)){
     if (!canAnnex(1, dx, dy)){ addLog("Impossible d'annexer", "Il faut être adjacent à ton territoire.", 1); return; }
     const attType = src.unit.type;
-    const r = beats(src.unit.type, dst.unit.type);
+    let att = src.unit.type;
+    let def = dst.unit.type;
+    if (dst.structure === 'city' && dst.owner === dst.unit.owner) def += DEF_BONUS_CITY;
+    const r = beats(att, def);
+
     if (r === 1){
       dst.unit = { ...src.unit, moved: true };
       src.unit = null;
@@ -642,31 +731,43 @@ function moveUnit(sx, sy, dx, dy, _viaReach=false){
   addLog(`Prise de ${dx},${dy}`, 'La case passe sous ton contrôle.', 1);
 }
 
-function moveUnitAI(sx, sy, dx, dy, owner, _viaReach=false){
+function moveUnitAI(sx, sy, dx, dy, owner){
   const src = cell(sx, sy), dst = cell(dx, dy);
   if (!src?.unit || src.unit.moved || src.unit.owner !== owner) return;
-  if (dst.structure !== 'none') return;
+  if (dst?.structure === 'tower' && isEnemy(owner, dst.owner)) return;
   if (moveCostUnit(src.unit.type, src, dst, owner) === Infinity) return;
+
+  // Fusion alliée (même type)
   if (dst?.unit && !isEnemy(owner, dst.unit.owner) && dst.unit.type === src.unit.type){
     dst.unit.level = (dst.unit.level||1) + (src.unit.level||1);
     dst.unit.moved = true; src.unit = null; dst.owner = owner;
-    addLog(`(IA) Fusion en ${dx},${dy}`, null, owner);
     return;
   }
+
+  // Combat
   if (dst?.unit && isEnemy(owner, dst.unit.owner)){
     if (!canAnnex(owner, dx, dy)) return;
-    const r = beats(src.unit.type, dst.unit.type);
-    if (r === 1){
-      dst.unit = { ...src.unit, moved: true }; src.unit = null; dst.owner = owner;
-    } else if (r === -1){
-      src.unit = null;
-    } else {
-      src.unit = null; dst.unit = null;
-    }
+    let att = src.unit.type, def = dst.unit.type;
+    if (dst.structure === 'city' && dst.owner === dst.unit.owner) def += DEF_BONUS_CITY;
+    const r = beats(att, def);
+    if (r === 1){ dst.unit = { ...src.unit, moved:true }; src.unit = null; dst.owner = owner; }
+    else if (r === -1){ src.unit = null; }
+    else { src.unit = null; dst.unit = null; }
     return;
   }
+
+  // Ville : capture/entrée
+  if (dst.structure === 'city'){
+    const wasEnemy = isEnemy(owner, dst.owner);
+    if (wasEnemy && !canAnnex(owner, dx, dy)) return;
+    if (wasEnemy) dst.owner = owner;
+    dst.unit = { ...src.unit, moved:true }; src.unit = null;
+    return;
+  }
+
+  // Case normale
   if (dst.owner !== owner && !canAnnex(owner, dx, dy)) return;
-  dst.unit = { ...src.unit, moved: true }; dst.owner = owner; src.unit = null;
+  dst.unit = { ...src.unit, moved:true }; dst.owner = owner; src.unit = null;
 }
 
 function moveShip(sx, sy, dx, dy){
@@ -725,12 +826,37 @@ B('makeGalleon').onclick = ()=>beginShipBuild('galleon');
 B('loadShip').onclick    = ()=>loadShip();
 B('disembark').onclick   = ()=>disembark();
 
-$('recFarmer').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; beginSpawnFromCity(s.x,s.y,1); };
-$('recMilitia').onclick= ()=>{ const s=selected; if(!s||s.kind!=='city') return; beginSpawnFromCity(s.x,s.y,2); };
-$('recSoldier').onclick= ()=>{ const s=selected; if(!s||s.kind!=='city') return; beginSpawnFromCity(s.x,s.y,3); };
+$('recFarmer').onclick = ()=>{
+  const s=selected; if(!s) return;
+  const c = cell(s.x,s.y);
+  if(!c || c.structure!=='city' || c.owner!==1) return;
+  beginSpawnFromCity(s.x,s.y,1);
+};
+$('recMilitia').onclick = ()=>{
+  const s=selected; if(!s) return;
+  const c = cell(s.x,s.y);
+  if(!c || c.structure!=='city' || c.owner!==1) return;
+  beginSpawnFromCity(s.x,s.y,2);
+};
+$('recSoldier').onclick = ()=>{
+  const s=selected; if(!s) return;
+  const c = cell(s.x,s.y);
+  if(!c || c.structure!=='city' || c.owner!==1) return;
+  beginSpawnFromCity(s.x,s.y,3);
+};
 
-$('upFarmMil').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,2); };
-$('upMilSold').onclick = ()=>{ const s=selected; if(!s||s.kind!=='city') return; tryUpgradeAtCity(s.x,s.y,3); };
+$('upFarmMil').onclick = ()=>{
+  const s=selected; if(!s) return;
+  const c = cell(s.x,s.y);
+  if(!c || c.structure!=='city' || c.owner!==1) return;
+  tryUpgradeAtCity(s.x,s.y,2);
+};
+$('upMilSold').onclick = ()=>{
+  const s=selected; if(!s) return;
+  const c = cell(s.x,s.y);
+  if(!c || c.structure!=='city' || c.owner!==1) return;
+  tryUpgradeAtCity(s.x,s.y,3);
+};
 
 function recruitLabel(type, cost){
   const u = UNITS[type];
@@ -791,7 +917,7 @@ function beginShipBuild(kind){
     addLog("Sélectionne d'abord une unité sur la côte.", null, 1);
     return;
   }
-  const cost = SHIPS[kind].cost;
+  const cost = shipBuildCost(kind, 1);
   if((gold[1]||0) < cost){ addLog("Pas assez d'or", `Coût ${cost} or`, 1); return; }
   const spots = shipBuildCandidates(selected.x, selected.y, kind, 1);
   if (!spots.length){
@@ -825,9 +951,18 @@ function updateActionsPanel(){
   const sSpots = onUnit ? shipBuildCandidates(selected.x,selected.y,'sloop',1).length    : 0;
   const bSpots = onUnit ? shipBuildCandidates(selected.x,selected.y,'brig',1).length     : 0;
   const gSpots = onUnit ? shipBuildCandidates(selected.x,selected.y,'galleon',1).length  : 0;
-  B('makeSloop').disabled   = !(onUnit && sSpots>0 && (gold[1]||0)>=SHIPS.sloop.cost);
-  B('makeBrig').disabled    = !(onUnit && bSpots>0 && (gold[1]||0)>=SHIPS.brig.cost);
-  B('makeGalleon').disabled = !(onUnit && gSpots>0 && (gold[1]||0)>=SHIPS.galleon.cost);
+  const costS = shipBuildCost('sloop',   1);
+const costB = shipBuildCost('brig',    1);
+const costG = shipBuildCost('galleon', 1);
+
+  B('makeSloop').textContent   = `Sloop 1 mât (${costS} or)`;
+  B('makeBrig').textContent    = `Brigantin 2 mâts (${costB} or)`;
+  B('makeGalleon').textContent = `Galion 3 mâts (${costG} or)`;
+
+  B('makeSloop').disabled   = !(onUnit && sSpots>0 && (gold[1]||0)>=costS);
+  B('makeBrig').disabled    = !(onUnit && bSpots>0 && (gold[1]||0)>=costB);
+  B('makeGalleon').disabled = !(onUnit && gSpots>0 && (gold[1]||0)>=costG);
+
   const ownEmptyLand=myTurn&&sel&&selected.kind==='empty'&&sel.terrain==='land'&&sel.structure==='none';
   B('buildCity').disabled=!(ownEmptyLand&&(gold[1]||0)>=cc);
   B('buildTower').disabled=!(ownEmptyLand&&(gold[1]||0)>=3);
@@ -837,7 +972,8 @@ function updateActionsPanel(){
     const t = cell(nx,ny);
     return !!t && (t.terrain==='land' || t.terrain==='forest') && !t.unit && !(t.structure==='tower' && isEnemy(1,t.owner)) && (t.owner===0 || canAnnex(1,nx,ny));
   }));
-  const onCity=myTurn&&sel&&selected.kind==='city'&&sel.structure==='city'&&sel.owner===1;
+  const onCity = myTurn && sel &&
+  ((sel.structure==='city' && sel.owner===1) || false);
   const cF = recruitCost(1,1), cM = recruitCost(2,1), cS = recruitCost(3,1);
   document.getElementById('recFarmer').innerHTML  = recruitLabel(1, cF);
   document.getElementById('recMilitia').innerHTML = recruitLabel(2, cM);
@@ -1235,7 +1371,11 @@ function aiTurn(owner){
     const coastal=S.find(c=>c.unit&&c.unit.owner===owner&&neighbors(c.x,c.y).some(([nx,ny])=>{const t=cell(nx,ny);return !!t && t.terrain!=='land'&&!t.ship;}));
     if(coastal){
       const seaShallow=neighbors(coastal.x,coastal.y).find(([nx,ny])=>{const t=cell(nx,ny);return t?.terrain==='shallow'&&!t.ship;});
-      const tryShip=seaShallow?'sloop':'brig', shipDef=SHIPS[tryShip], cost=shipDef.cost, upk=shipDef.upkeep, inc=income(owner);
+      const tryShip = seaShallow ? 'sloop' : 'brig';
+      const shipDef = SHIPS[tryShip];
+      const cost    = shipBuildCost(tryShip, owner);
+      const upk     = shipDef.upkeep, inc = income(owner);
+
       const nextGold=(gold[owner]||0)-cost+inc-(upkeep(owner)+upk);
       if((gold[owner]||0)-cost>=RESERVE && nextGold>=0){
         const pos=seaShallow?seaShallow:neighbors(coastal.x,coastal.y).find(([nx,ny])=>{const t=cell(nx,ny);return !!t && (t.terrain==='deep'||t.terrain==='shallow')&&!t.ship;});
