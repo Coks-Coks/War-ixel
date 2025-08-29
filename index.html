@@ -1,28 +1,32 @@
 <!DOCTYPE html>
 <html lang="fr">
-<!-- PWA -->
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#1e3a8a">
+<head>
+  <!-- Méta en premier -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>War-ixel</title>
 
-<!-- iOS (Safari ne lit pas le manifest pour l’icône) -->
-<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e3a8a">
 
-<!-- Service Worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
-    });
-  }
-</script>
+  <!-- iOS -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <!-- Si tu n'as pas icon-180.png, garde la ligne suivante à la place :
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
+  -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-</script>
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(console.error);
+      });
+    }
+  </script>
 
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>War-ixel</title>
 <style>
   :root{
     --deep:#255c9e;
