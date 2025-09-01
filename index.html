@@ -202,6 +202,7 @@
     <button id="restart">Recommencer</button>
     <button id="menu">Menu</button>
     <span class="paper-chip">Seed: <b id="seedLabel">—</b></span>
+    <span class="paper-chip">Build: <b id="buildLabel">v0.6.11</b></span>
   </div>
 </header>
 
@@ -1557,13 +1558,17 @@ if ('PointerEvent' in window){
     onPtrUp({});
   });
 }
-
 }
 
 initStartUI();
 showStart();
 
-})();
+// --- Affichage de la version ---
+const BUILD = 'v0.6.11';
+const el = document.getElementById('buildLabel');
+if (el) el.textContent = BUILD;
+
+})(); // fin de l'IIFE
 </script>
 </body>
 </html>
