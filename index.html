@@ -38,12 +38,11 @@
     --theo-fill:rgba(100,140,220,.20);
     --bg:#eae4d6;
     --ink:#171717;
-    --paper1:#f4e2b8; --paper2:#f0d59a; --paper3:#e8c77a; --paper-ink:#473924;
-    :root{
-  /* ...tes variables... */
-  --headH: 72px;   /* hauteur header par défaut */
-  }
-
+    --paper1:#f4e2b8;
+    --paper2:#f0d59a;
+    --paper3:#e8c77a;
+    --paper-ink:#473924;
+    --headH:72px; /* hauteur header par défaut */
   }
 
   .pos { color:#1b8f2f; font-weight:700; }   /* valeurs positives (impôts) */
@@ -70,7 +69,22 @@
       linear-gradient(180deg,var(--paper1),var(--paper2) 55%,var(--paper3));
     box-shadow:inset 0 1px 0 #fff7,inset 0 -1px 0 #0001,0 4px 16px rgba(0,0,0,.12);
   }
+  @media (display-mode: standalone) {
+    @supports (padding: max(0px)) {
+      header { padding-top: max(10px, env(safe-area-inset-top)); }
+  }
+  }
+
   .paper-chip{padding:6px 10px;border-radius:9px;border:1px solid #d7c7ad;background:#fff9;backdrop-filter:blur(2px)}
+  #viewControls{
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
   .controls{display:flex;gap:8px;align-items:center}
   .controls button{padding:8px 12px;border:1px solid #cdbb98;border-radius:9px;background:#fff9;cursor:pointer;box-shadow:inset 0 1px 0 #fff7}
 
@@ -82,20 +96,35 @@
     height: calc(100dvh - var(--headH, 72px));
   }
 
-  /* Mode compact: paysage petit écran */
+ /* Mode compact: paysage petit écran */
   @media (max-width: 920px) and (orientation: landscape) {
     .layout {
       grid-template-columns: 1fr;
       padding: 0;
-      height: calc(100dvh - var(--headH, 72px)); /* au lieu de 100dvh */
+      height: calc(100dvh - var(--headH, 72px));
     }
     #board {
       padding: 0;
       border: 0;
       border-radius: 0;
       height: 100%;
+    }
+
+    /* Sidebar en tiroir à droite */
+    #sidebar {
+      position: fixed; top: 0; right: 0; height: 100vh; width: 320px;
+      transform: translateX(100%); transition: transform .25s ease;
+      z-index: 55; background: linear-gradient(180deg,#fff9 0 10%, #0000 30% 70%, #fff6 90% 100%),
+        repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
+        linear-gradient(180deg, var(--paper1), var(--paper2) 55%, var(--paper3));
+      border-left: 1px solid #d7c7ad; padding: 10px; overflow: auto;
+    }
+    body.show-sidebar #sidebar { transform: translateX(0); }
+
+    /* Contrôles de zoom */
+    #viewControls { left: 8px; top: 8px; }
   }
-  }
+
   #sidebar,#board{min-height:0}
   #sidebar{display:flex;flex-direction:column;gap:12px;overflow:auto}
 
@@ -226,35 +255,7 @@
     background: #fff; border: 1px solid #cdbb98;
     box-shadow: 0 6px 18px rgba(0,0,0,.22); cursor: pointer;
   }
-
-  /* Mode compact: paysage petit écran */
-  @media (max-width: 920px) and (orientation: landscape) {
-    .layout {
-      grid-template-columns: 1fr;
-      padding: 0;                 /* plus d’espace perdu */
-      height: 100dvh;             /* remplace calc(100vh - 72px) */
-    }
-    #board {
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      height: 100%;               /* occupe toute la hauteur du parent */
-    }
-
-    /* Sidebar devient un tiroir qui slide depuis la droite */
-    #sidebar {
-      position: fixed; top: 0; right: 0; height: 100vh; width: 320px;
-      transform: translateX(100%); transition: transform .25s ease;
-      z-index: 55; background: linear-gradient(180deg,#fff9 0 10%, #0000 30% 70%, #fff6 90% 100%),
-        repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
-        linear-gradient(180deg, var(--paper1), var(--paper2) 55%, var(--paper3));
-      border-left: 1px solid #d7c7ad; padding: 10px; overflow: auto;
-  }
-  body.show-sidebar #sidebar { transform: translateX(0); }
-
-  /* Place mieux les contrôles de zoom */
-  #viewControls { left: 8px; top: 8px; }
-}
+ 
 
 /* Ajuste les safe areas quand l’app est installée (standalone) */
 @media (display-mode: standalone) {
@@ -309,7 +310,7 @@
   </div>
 
   <div id="board">
-    <div id="viewControls" class="paper-chip" style="position:absolute;left:12px;top:12px;z-index:5;display:flex;gap:8px;align-items:center;">
+    <div id="viewControls" class="paper-chip">
       <button id="zoomOut" title="Zoom -">−</button>
       <span id="zoomLabel">100%</span>
       <button id="zoomIn"  title="Zoom +">+</button>
