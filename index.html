@@ -3,7 +3,7 @@
 <head>
   <!-- Méta en premier -->
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>War-ixel</title>
 
   <!-- PWA -->
@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#1e3a8a">
 
   <!-- iOS -->
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   <!-- Si tu n'as pas icon-180.png, garde la ligne suivante à la place :
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   -->
@@ -190,6 +190,43 @@
   .hex.frontier{ box-shadow: inset 0 0 0 2px rgba(0,0,0,.12); }
   .hex.frontier.owned1{ box-shadow: inset 0 0 0 2px rgba(30,58,138,.35); }
   .hex.frontier.owned2{ box-shadow: inset 0 0 0 2px rgba(183,28,28,.35); }
+  /* Bouton flottant pour ouvrir/fermer le tiroir */
+  .fab {
+    position: fixed; bottom: 12px; right: 12px; z-index: 60;
+    width: 48px; height: 48px; border-radius: 9999px;
+    display: flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid #cdbb98;
+    box-shadow: 0 6px 18px rgba(0,0,0,.22); cursor: pointer;
+  }
+
+  /* Mode compact: paysage petit écran */
+  @media (max-width: 920px) and (orientation: landscape) {
+    header { display: none; }
+    .layout { grid-template-columns: 1fr; padding: 6px; }
+    #board { padding: 6px; }
+
+  /* Sidebar devient un tiroir qui slide depuis la droite */
+  #sidebar {
+    position: fixed; top: 0; right: 0; height: 100vh; width: 320px;
+    transform: translateX(100%); transition: transform .25s ease;
+    z-index: 55; background: linear-gradient(180deg,#fff9 0 10%, #0000 30% 70%, #fff6 90% 100%),
+      repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
+      linear-gradient(180deg, var(--paper1), var(--paper2) 55%, var(--paper3));
+    border-left: 1px solid #d7c7ad; padding: 10px; overflow: auto;
+  }
+  body.show-sidebar #sidebar { transform: translateX(0); }
+
+  /* Place mieux les contrôles de zoom */
+  #viewControls { left: 8px; top: 8px; }
+}
+
+/* Ajuste les safe areas quand l’app est installée (standalone) */
+@media (display-mode: standalone) {
+  .fab {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    right:  calc(12px + env(safe-area-inset-right));
+  }
+}
 
 </style>
 </head>
@@ -1563,12 +1600,26 @@ if ('PointerEvent' in window){
 initStartUI();
 showStart();
 
+// Bouton tiroir paysage mobile
+document.getElementById('toggleSidebar').addEventListener('click', () => {
+  document.body.classList.toggle('show-sidebar');
+});
+
+// Ferme le tiroir si on clique dans le plateau
+document.getElementById('board').addEventListener('click', () => {
+  if (document.body.classList.contains('show-sidebar')) {
+    document.body.classList.remove('show-sidebar');
+  }
+});
+
+
 // --- Affichage de la version ---
-const BUILD = 'v0.6.11';
+const BUILD = 'v0.7.2';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
 
 })(); // fin de l'IIFE
 </script>
+<button id="toggleSidebar" class="fab" aria-label="Ouvrir le menu">☰</button>
 </body>
 </html>
