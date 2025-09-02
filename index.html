@@ -285,6 +285,7 @@
 </header>
 
 <div class="layout">
+  <!-- ───────── Sidebar ───────── -->
   <div id="sidebar">
     <div class="paper">
       <h3>Actions</h3>
@@ -296,42 +297,46 @@
         <button id="recSoldier" disabled>Recruter Soldat</button>
         <button id="upFarmMil"  disabled>Améliorer Fermier → Milice</button>
         <button id="upMilSold"  disabled>Améliorer Milice → Soldat</button>
-        <button id="makeSloop" disabled>Sloop 1 mât (5 or)</button>
-        <button id="makeBrig" disabled>Brigantin 2 mâts (10 or)</button>
+        <button id="makeSloop"   disabled>Sloop 1 mât (5 or)</button>
+        <button id="makeBrig"    disabled>Brigantin 2 mâts (10 or)</button>
         <button id="makeGalleon" disabled>Galion 3 mâts (20 or)</button>
-        <button id="loadShip" disabled>Embarquer</button>
-        <button id="disembark" disabled>Débarquer</button>
+        <button id="loadShip"    disabled>Embarquer</button>
+        <button id="disembark"   disabled>Débarquer</button>
       </div>
     </div>
+
     <div class="paper">
       <h3>Gestion</h3>
       <div id="summary" style="font-size:13px;line-height:1.2"></div>
     </div>
+
     <div class="paper">
       <h3>Journal</h3>
       <div id="log"></div>
       <div class="meta-mini">
-        Seed : <b id="seedLabel">—</b> · Build : <b id="buildLabel">v0.7.3</b>
+        Seed : <b id="seedLabel">—</b> · Build : <b id="buildLabel">v0.7.8</b>
+      </div>
     </div>
-  </div>
+  </div><!-- /#sidebar -->
 
+  <!-- ───────── Plateau ───────── -->
   <div id="board">
     <div id="viewControls" class="paper-chip">
-      <button id="zoomOut" title="Zoom -">−</button>
+      <button id="zoomOut" aria-label="Zoom out">−</button>
       <span id="zoomLabel">100%</span>
-      <button id="zoomIn"  title="Zoom +">+</button>
+      <button id="zoomIn"  aria-label="Zoom in">+</button>
     </div>
-    <div id="stage">
-      <div id="world">
+
+    <div id="world">
+      <div id="stage">
         <svg id="terrain"></svg>
         <svg id="overlay"></svg>
         <div id="grid"></div>
       </div>
     </div>
-  </div>
-</div>
+  </div><!-- /#board -->
+</div><!-- /.layout -->
 
-<div id="start" class="modal show">
   <div class="card">
     <h2>War-ixel — Nouvelle partie</h2>
     <p>Choisis <b>ta couleur</b>, la <b>taille</b>, le <b>nombre d'IA</b>, leurs <b>alliances</b> et la <b>difficulté</b> (1 novice → 4 chef de guerre), puis (optionnel) une <b>seed</b> :</p>
