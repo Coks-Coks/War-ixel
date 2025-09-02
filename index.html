@@ -16,7 +16,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
   <!-- Service Worker -->
   <script>
@@ -39,6 +40,10 @@
     --bg:#eae4d6;
     --ink:#171717;
     --paper1:#f4e2b8; --paper2:#f0d59a; --paper3:#e8c77a; --paper-ink:#473924;
+  }
+
+  html, body {
+    overscroll-behavior: none;  /* bloque le “rebond”, le scroll chaining et le pull-to-refresh (Chrome/Android) */
   }
 
   *{box-sizing:border-box}
@@ -202,8 +207,17 @@
   /* Mode compact: paysage petit écran */
   @media (max-width: 920px) and (orientation: landscape) {
     header { display: none; }
-    .layout { grid-template-columns: 1fr; padding: 6px; }
-    #board { padding: 6px; }
+    .layout {
+      grid-template-columns: 1fr;
+      padding: 0;                 /* plus d’espace perdu */
+      height: 100dvh;             /* remplace calc(100vh - 72px) */
+    }
+    #board {
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      height: 100%;               /* occupe toute la hauteur du parent */
+    }
 
   /* Sidebar devient un tiroir qui slide depuis la droite */
   #sidebar {
@@ -239,7 +253,7 @@
     <button id="restart">Recommencer</button>
     <button id="menu">Menu</button>
     <span class="paper-chip">Seed: <b id="seedLabel">—</b></span>
-    <span class="paper-chip">Build: <b id="buildLabel">v0.6.11</b></span>
+    <span class="paper-chip">Build: <b id="buildLabel">—</b></span>
   </div>
 </header>
 
@@ -319,6 +333,8 @@
     </div>
   </div>
 </div>
+
+<button id="toggleSidebar" class="fab" aria-label="Ouvrir le menu">☰</button>
 
 <script>
 (function(){
@@ -1614,12 +1630,11 @@ document.getElementById('board').addEventListener('click', () => {
 
 
 // --- Affichage de la version ---
-const BUILD = 'v0.7.2';
+const BUILD = 'v0.7.4';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
 
 })(); // fin de l'IIFE
 </script>
-<button id="toggleSidebar" class="fab" aria-label="Ouvrir le menu">☰</button>
 </body>
 </html>
