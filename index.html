@@ -337,33 +337,36 @@
   </div><!-- /#board -->
 </div><!-- /.layout -->
 
-  <div class="card">
-    <h2>War-ixel — Nouvelle partie</h2>
-    <p>Choisis <b>ta couleur</b>, la <b>taille</b>, le <b>nombre d'IA</b>, leurs <b>alliances</b> et la <b>difficulté</b> (1 novice → 4 chef de guerre), puis (optionnel) une <b>seed</b> :</p>
-    <div class="swatches" id="swatches"></div>
-    <div style="margin-top:10px; display:grid; gap:8px; grid-template-columns:repeat(2,1fr);">
-      <label>IA (0–4)<br><input id="aiCount" type="number" min="0" max="4" value="1" style="width:100%"></label>
-      <label>IA alliées entre elles ?<br><select id="aiAllied" style="width:100%"><option value="1" selected>Oui</option><option value="0">Non</option></select></label>
-      <label>Difficulté<br>
-        <select id="difficulty" style="width:100%">
-          <option value="1">1 — Novice</option>
-          <option value="2" selected>2 — Normal</option>
-          <option value="3">3 — Stratège</option>
-          <option value="4">4 — Chef de guerre</option>
-        </select>
-      </label>
-      <div></div>
-    </div>
-    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-      <label style="min-width:42px;">Seed</label>
-      <input id="seedInput" type="text" placeholder="aléatoire" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:8px;">
-      <button id="diceSeed" title="Seed aléatoire">🎲</button>
-    </div>
-    <div class="sizes" style="margin-top:8px">
-      <button data-size="small">Petit</button>
-      <button data-size="medium">Moyen</button>
-      <button data-size="large">Grand</button>
-      <button data-size="huge">Immense</button>
+  <!-- MODAL DE DÉMARRAGE -->
+  <div id="start" class="modal">
+    <div class="card">
+      <h2>War-ixel — Nouvelle partie</h2>
+      <p>Choisis <b>ta couleur</b>, la <b>taille</b>, le <b>nombre d'IA</b>, leurs <b>alliances</b> et la <b>difficulté</b> (1 novice → 4 chef de guerre), puis (optionnel) une <b>seed</b> :</p>
+      <div class="swatches" id="swatches"></div>
+      <div style="margin-top:10px; display:grid; gap:8px; grid-template-columns:repeat(2,1fr);">
+        <label>IA (0–4)<br><input id="aiCount" type="number" min="0" max="4" value="1" style="width:100%"></label>
+        <label>IA alliées entre elles ?<br><select id="aiAllied" style="width:100%"><option value="1" selected>Oui</option><option value="0">Non</option></select></label>
+        <label>Difficulté<br>
+          <select id="difficulty" style="width:100%">
+            <option value="1">1 — Novice</option>
+            <option value="2" selected>2 — Normal</option>
+            <option value="3">3 — Stratège</option>
+            <option value="4">4 — Chef de guerre</option>
+          </select>
+        </label>
+        <div></div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+        <label style="min-width:42px;">Seed</label>
+        <input id="seedInput" type="text" placeholder="aléatoire" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:8px;">
+        <button id="diceSeed" title="Seed aléatoire">🎲</button>
+      </div>
+      <div class="sizes" style="margin-top:8px">
+        <button data-size="small">Petit</button>
+        <button data-size="medium">Moyen</button>
+        <button data-size="large">Grand</button>
+        <button data-size="huge">Immense</button>
+      </div>
     </div>
   </div>
 </div>
