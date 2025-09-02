@@ -91,18 +91,23 @@
   .layout{
     display:grid;
     grid-template-columns:320px 1fr;
+    grid-template-rows: 1fr;            /* NEW: la seule rangée remplit la hauteur */
     gap:12px;
     padding:12px;
     height: calc(100dvh - var(--headH, 72px));
+    min-height: 0;                      /* sécurité */
   }
+
 
  /* Mode compact: paysage petit écran */
   @media (max-width: 920px) and (orientation: landscape) {
     .layout {
       grid-template-columns: 1fr;
+      grid-template-rows: 1fr;          /* NEW: idem en paysage */
       padding: 0;
       height: calc(100dvh - var(--headH, 72px));
     }
+
     #board {
       padding: 0;
       border: 0;
@@ -125,7 +130,8 @@
     #viewControls { left: 8px; top: 8px; }
   }
 
-  #sidebar,#board{min-height:0}
+  #sidebar, #board{min-height:0;}
+  #board{height:100%;}                   /* NEW: occupe 100% de la rangée */
   #sidebar{display:flex;flex-direction:column;gap:12px;overflow:auto}
 
   .paper{
