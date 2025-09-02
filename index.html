@@ -17,7 +17,6 @@
   -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
   <!-- Service Worker -->
   <script>
@@ -40,7 +39,16 @@
     --bg:#eae4d6;
     --ink:#171717;
     --paper1:#f4e2b8; --paper2:#f0d59a; --paper3:#e8c77a; --paper-ink:#473924;
+    :root{
+  /* ...tes variables... */
+  --headH: 72px;   /* hauteur header par défaut */
   }
+
+  }
+
+  .pos { color:#1b8f2f; font-weight:700; }   /* valeurs positives (impôts) */
+  .neg { color:#b71c1c; font-weight:700; }   /* valeurs négatives (entretien) */
+  .meta-mini { font-size:12px; opacity:.8; margin-top:6px; }
 
   html, body {
     overscroll-behavior: none;  /* bloque le “rebond”, le scroll chaining et le pull-to-refresh (Chrome/Android) */
@@ -71,7 +79,22 @@
     grid-template-columns:320px 1fr;
     gap:12px;
     padding:12px;
-    height: calc(100vh - 72px);
+    height: calc(100dvh - var(--headH, 72px));
+  }
+
+  /* Mode compact: paysage petit écran */
+  @media (max-width: 920px) and (orientation: landscape) {
+    .layout {
+      grid-template-columns: 1fr;
+      padding: 0;
+      height: calc(100dvh - var(--headH, 72px)); /* au lieu de 100dvh */
+    }
+    #board {
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      height: 100%;
+  }
   }
   #sidebar,#board{min-height:0}
   #sidebar{display:flex;flex-direction:column;gap:12px;overflow:auto}
@@ -206,7 +229,6 @@
 
   /* Mode compact: paysage petit écran */
   @media (max-width: 920px) and (orientation: landscape) {
-    header { display: none; }
     .layout {
       grid-template-columns: 1fr;
       padding: 0;                 /* plus d’espace perdu */
@@ -219,14 +241,14 @@
       height: 100%;               /* occupe toute la hauteur du parent */
     }
 
-  /* Sidebar devient un tiroir qui slide depuis la droite */
-  #sidebar {
-    position: fixed; top: 0; right: 0; height: 100vh; width: 320px;
-    transform: translateX(100%); transition: transform .25s ease;
-    z-index: 55; background: linear-gradient(180deg,#fff9 0 10%, #0000 30% 70%, #fff6 90% 100%),
-      repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
-      linear-gradient(180deg, var(--paper1), var(--paper2) 55%, var(--paper3));
-    border-left: 1px solid #d7c7ad; padding: 10px; overflow: auto;
+    /* Sidebar devient un tiroir qui slide depuis la droite */
+    #sidebar {
+      position: fixed; top: 0; right: 0; height: 100vh; width: 320px;
+      transform: translateX(100%); transition: transform .25s ease;
+      z-index: 55; background: linear-gradient(180deg,#fff9 0 10%, #0000 30% 70%, #fff6 90% 100%),
+        repeating-linear-gradient(6deg,#0000 0 12px,#0001 12px 13px),
+        linear-gradient(180deg, var(--paper1), var(--paper2) 55%, var(--paper3));
+      border-left: 1px solid #d7c7ad; padding: 10px; overflow: auto;
   }
   body.show-sidebar #sidebar { transform: translateX(0); }
 
@@ -252,8 +274,6 @@
     <button id="endTurn">Finir le tour</button>
     <button id="restart">Recommencer</button>
     <button id="menu">Menu</button>
-    <span class="paper-chip">Seed: <b id="seedLabel">—</b></span>
-    <span class="paper-chip">Build: <b id="buildLabel">—</b></span>
   </div>
 </header>
 
@@ -283,6 +303,8 @@
     <div class="paper">
       <h3>Journal</h3>
       <div id="log"></div>
+      <div class="meta-mini">
+        Seed : <b id="seedLabel">—</b> · Build : <b id="buildLabel">v0.7.3</b>
     </div>
   </div>
 
@@ -503,35 +525,37 @@ function renderSummary(){
   if (!box) return;
 
   const counts = countSummary(1);
-  const gMe    = Math.floor(gold[1] || 0);
-  const bd     = upkeepBreakdown(1);
-  const fmt    = (n)=> Number(n).toFixed(1);
-  const net    = Number((gMe - bd.total).toFixed(1));
+  const gMe  = Math.floor(gold[1] || 0);
+  const inc  = income(1);                // Impôt seigneurial (terres + villes)
+  const bd   = upkeepBreakdown(1);       // détail entretien (on l’utilise pour total)
+  const upk  = +bd.total.toFixed(1);
+  const net  = +(gMe + inc - upk).toFixed(1);
+  const fmt  = (n)=> (n % 1 ? n.toFixed(1) : n);
 
-  // Ennemis (affichage conditionnel selon TOTAL_PLAYERS)
+  // Ennemis (affichage conditionnel)
   const enemies = [];
   for (let o=2; o<=TOTAL_PLAYERS; o++) enemies.push({ id:o-1, g: Math.floor(gold[o] || 0) });
 
   box.innerHTML = `
     <ul class="sum-list">
-      <li class="sum-item"><span>Fortune actuelle</span><b>${gMe}</b></li>
-      <li class="sum-item"><span>Frais d'entretien</span><b>${fmt(bd.total)}</b></li>
-      <li class="sum-item"><span>Surcharge logistique</span><b>${fmt(bd.overCost)}</b></li>
-      <li class="sum-item"><span>Solde pour l'année suivante</span><b>${fmt(net)}</b></li>
+      <li class="sum-item"><span>Fortune actuelle</span><b>${fmt(gMe)}</b></li>
+      <li class="sum-item"><span>Impôt seigneurial</span><b class="pos">+${fmt(inc)}</b></li>
+      <li class="sum-item"><span>Frais d'entretien</span><b class="neg">−${fmt(upk)}</b></li>
+      <li class="sum-item"><span>Solde pour l'année prochaine</span><b>${fmt(net)}</b></li>
     </ul>
 
     <div class="sum-title">Armée</div>
     <ul class="sum-list">
-      <li class="sum-item"><span>Fermier</span><b>${counts.units[1]} <span style="opacity:.8">(-${fmt(bd.byUnit[1])} pièce d'or)</span></b></li>
-      <li class="sum-item"><span>Milice</span><b>${counts.units[2]} <span style="opacity:.8">(-${fmt(bd.byUnit[2])} pièce d'or)</span></b></li>
-      <li class="sum-item"><span>Soldat</span><b>${counts.units[3]} <span style="opacity:.8">(-${fmt(bd.byUnit[3])} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Fermier</span><b>${counts.units[1]} <span style="opacity:.8">(-${fmt(bd.byUnit[1])})</span></b></li>
+      <li class="sum-item"><span>Milice</span><b>${counts.units[2]} <span style="opacity:.8">(-${fmt(bd.byUnit[2])})</span></b></li>
+      <li class="sum-item"><span>Soldat</span><b>${counts.units[3]} <span style="opacity:.8">(-${fmt(bd.byUnit[3])})</span></b></li>
     </ul>
 
     <div class="sum-title">Flotte</div>
     <ul class="sum-list">
-      <li class="sum-item"><span>Sloop</span><b>${counts.ships.sloop} <span style="opacity:.8">(-${fmt(bd.byShip.sloop)} pièce d'or)</span></b></li>
-      <li class="sum-item"><span>Brigantin</span><b>${counts.ships.brig} <span style="opacity:.8">(-${fmt(bd.byShip.brig)} pièce d'or)</span></b></li>
-      <li class="sum-item"><span>Galion</span><b>${counts.ships.galleon} <span style="opacity:.8">(-${fmt(bd.byShip.galleon)} pièce d'or)</span></b></li>
+      <li class="sum-item"><span>Sloop</span><b>${counts.ships.sloop} <span style="opacity:.8">(-${fmt(bd.byShip.sloop)})</span></b></li>
+      <li class="sum-item"><span>Brigantin</span><b>${counts.ships.brig} <span style="opacity:.8">(-${fmt(bd.byShip.brig)})</span></b></li>
+      <li class="sum-item"><span>Galion</span><b>${counts.ships.galleon} <span style="opacity:.8">(-${fmt(bd.byShip.galleon)})</span></b></li>
     </ul>
 
     <div class="sum-title">Ennemi</div>
@@ -703,20 +727,12 @@ function beginSpawnFromCity(x,y,type){
   const cost = recruitCost(type,1);
   if ((gold[1]||0) < cost){ addLog("Pas assez d'or", `Coût ${cost} or`, 1); return; }
   const spots = citySpawnCandidates(x,y,type,1);
-  if (spots.length === 0){
+  if (!spots.length){
     addLog("Pas d'emplacement de camp à proximité.","Aucune case terrestre libre/annexable autour de la ville pour former une nouvelle armée.", 1);
     return;
   }
-  if (spots.length === 1){
-    const [dx,dy] = spots[0];
-    gold[1] -= cost;
-    if (spawnUnit(dx,dy,{owner:1,type,level:1},true)){
-      addLog(`Recrutement: ${UNITS[type].name}`, `En ${dx},${dy} (coût ${cost})`, 1);
-      render();
-    }
-    return;
-  }
-  spawnMode = { type, cost, spots };
+  // ✨ Toujours proposer (même s'il n'y a qu'une case)
+  spawnMode   = { type, cost, spots };
   spawnChoices = spots.slice();
   addLog("Choisis une case de déploiement", "Clique sur une des cases surlignées autour de la ville.", 1);
   drawOverlay();
@@ -1633,6 +1649,16 @@ document.getElementById('board').addEventListener('click', () => {
 const BUILD = 'v0.7.4';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
+
+const headerEl = document.querySelector('header');
+function syncHeadH(){
+  const h = headerEl ? headerEl.offsetHeight : 72;
+  document.documentElement.style.setProperty('--headH', h + 'px');
+}
+window.addEventListener('resize', syncHeadH);
+window.addEventListener('orientationchange', syncHeadH);
+window.addEventListener('DOMContentLoaded', syncHeadH);
+syncHeadH();
 
 })(); // fin de l'IIFE
 </script>
