@@ -9,7 +9,8 @@
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e3a8a">
-
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-title" content="War-ixel">
   <!-- iOS -->
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   <!-- Si tu n'as pas icon-180.png, garde la ligne suivante à la place :
@@ -278,9 +279,9 @@
   <div class="paper-chip">Tour: <b id="turnLabel">Joueur</b></div>
   <div class="paper-chip">Année: <b id="yearLabel">1</b></div>
   <div class="controls">
-    <button id="endTurn">Finir le tour</button>
-    <button id="restart">Recommencer</button>
-    <button id="menu">Menu</button>
+    <button type="button" id="endTurn">Finir le tour</button>
+    <button type="button" id="restart">Recommencer</button>
+    <button type="button" id="menu">Menu</button>
   </div>
 </header>
 
@@ -290,18 +291,18 @@
     <div class="paper">
       <h3>Actions</h3>
       <div id="actions">
-        <button id="buildCity" disabled>Construire Ville</button>
-        <button id="buildTower" disabled>Bâtir Tour (3 or)</button>
-        <button id="recFarmer"  disabled>Recruter Fermier</button>
-        <button id="recMilitia" disabled>Recruter Milicien</button>
-        <button id="recSoldier" disabled>Recruter Soldat</button>
-        <button id="upFarmMil"  disabled>Améliorer Fermier → Milice</button>
-        <button id="upMilSold"  disabled>Améliorer Milice → Soldat</button>
-        <button id="makeSloop"   disabled>Sloop 1 mât (5 or)</button>
-        <button id="makeBrig"    disabled>Brigantin 2 mâts (10 or)</button>
-        <button id="makeGalleon" disabled>Galion 3 mâts (20 or)</button>
-        <button id="loadShip"    disabled>Embarquer</button>
-        <button id="disembark"   disabled>Débarquer</button>
+        <button type="button" id="buildCity" disabled>Construire Ville</button>
+        <button type="button" id="buildTower" disabled>Bâtir Tour (3 or)</button>
+        <button type="button" id="recFarmer"  disabled>Recruter Fermier</button>
+        <button type="button" id="recMilitia" disabled>Recruter Milicien</button>
+        <button type="button" id="recSoldier" disabled>Recruter Soldat</button>
+        <button type="button" id="upFarmMil"  disabled>Améliorer Fermier → Milice</button>
+        <button type="button" id="upMilSold"  disabled>Améliorer Milice → Soldat</button>
+        <button type="button" id="makeSloop"   disabled>Sloop 1 mât (5 or)</button>
+        <button type="button" id="makeBrig"    disabled>Brigantin 2 mâts (10 or)</button>
+        <button type="button" id="makeGalleon" disabled>Galion 3 mâts (20 or)</button>
+        <button type="button" id="loadShip"    disabled>Embarquer</button>
+        <button type="button" id="disembark"   disabled>Débarquer</button>
       </div>
     </div>
 
@@ -312,7 +313,7 @@
 
     <div class="paper">
       <h3>Journal</h3>
-      <div id="log"></div>
+      <div id="log" aria-live="polite"></div>
       <div class="meta-mini">
       </div>
     </div>
@@ -321,9 +322,9 @@
   <!-- ───────── Plateau ───────── -->
   <div id="board">
     <div id="viewControls" class="paper-chip">
-      <button id="zoomOut" aria-label="Zoom out">−</button>
+      <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
       <span id="zoomLabel">100%</span>
-      <button id="zoomIn"  aria-label="Zoom in">+</button>
+      <button type="button" id="zoomIn"  aria-label="Zoom in">+</button>
     </div>
 
     <div id="world">
@@ -337,9 +338,9 @@
 </div><!-- /.layout -->
 
   <!-- MODAL DE DÉMARRAGE -->
-  <div id="start" class="modal">
+  <div id="start" class="modal" role="dialog" aria-modal="true" aria-labelledby="start-title">
     <div class="card">
-      <h2>War-ixel — Nouvelle partie</h2>
+      <h2 id="start-title">War-ixel — Nouvelle partie</h2>
       <p>Choisis <b>ta couleur</b>, la <b>taille</b>, le <b>nombre d'IA</b>, leurs <b>alliances</b> et la <b>difficulté</b> (1 novice → 4 chef de guerre), puis (optionnel) une <b>seed</b> :</p>
       <div class="swatches" id="swatches"></div>
       <div style="margin-top:10px; display:grid; gap:8px; grid-template-columns:repeat(2,1fr);">
@@ -358,19 +359,19 @@
       <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
         <label style="min-width:42px;">Seed</label>
         <input id="seedInput" type="text" placeholder="aléatoire" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:8px;">
-        <button id="diceSeed" title="Seed aléatoire">🎲</button>
+        <button type="button" id="diceSeed" title="Seed aléatoire">🎲</button>
+        <span id="seedLabel" style="font-size:12px; opacity:.8; margin-left:8px;"></span>
       </div>
       <div class="sizes" style="margin-top:8px">
-        <button data-size="small">Petit</button>
-        <button data-size="medium">Moyen</button>
-        <button data-size="large">Grand</button>
-        <button data-size="huge">Immense</button>
+        <button type="button" data-size="small">Petit</button>
+        <button type="button" data-size="medium">Moyen</button>
+        <button type="button" data-size="large">Grand</button>
+        <button type="button" data-size="huge">Immense</button>
       </div>
     </div>
-  </div>
 </div>
 
-<button id="toggleSidebar" class="fab" aria-label="Ouvrir le menu">☰</button>
+<button type="button" id="toggleSidebar" class="fab" aria-label="Ouvrir le menu" aria-pressed="false">☰</button>
 
 <script>
 (function(){
@@ -423,8 +424,8 @@ function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>1
 let rand=Math.random;
 function hashStringToInt(s){ if(s==null) return 0; if(/^0x/i.test(s)) return parseInt(s,16)>>>0; if(/^\d+$/.test(s)) return (parseInt(s,10)>>>0);
   return Array.from(String(s)).reduce((h,ch)=>(Math.imul(31,h)+ch.charCodeAt(0))>>>0,0);}
-function setSeed(s){ const n=(typeof s==='string')?hashStringToInt(s):(s>>>0); CURRENT_SEED=(n||1)>>>0; rand=mulberry32(CURRENT_SEED); document.getElementById('seedLabel').textContent=CURRENT_SEED; }
-
+function setSeed(s){ const n=(typeof s==='string')?hashStringToInt(s):(s>>>0); CURRENT_SEED=(n||1)>>>0; rand=mulberry32(CURRENT_SEED); const sl = document.getElementById('seedLabel');
+if (sl) sl.textContent = CURRENT_SEED; }
 function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=[...h].map(x=>x+x).join('');const num=parseInt(h,16);return{r:(num>>16)&255,g:(num>>8)&255,b:num&255};}
 function rgbToHex(r,g,b){const t=n=>n.toString(16).padStart(2,'0');return '#'+t(r)+t(g)+t(b);}
 function mix(c1,c2,p){const a=hexToRgb(c1),b=hexToRgb(c2);return rgbToHex(Math.round(a.r+(b.r-a.r)*p),Math.round(a.g+(b.g-a.g)*p),Math.round(a.b+(b.b-a.b)*p));}
@@ -574,7 +575,7 @@ function renderSummary(){
 
     <div class="sum-title">Ennemi</div>
     <ul class="sum-list">
-      <li class="sum-item"><span>Nombre d'ennemi</span><b>${enemies.length}</b></li>
+      <li class="sum-item"><span>Nombre d'ennemis</span><b>${enemies.length}</b></li>
       ${enemies.map(e => `
         <li class="sum-item"><span>Or présumé IA ${e.id}</span><b>${e.g}</b></li>
       `).join('')}
@@ -1647,8 +1648,10 @@ initStartUI();
 showStart();
 
 // Bouton tiroir paysage mobile
-document.getElementById('toggleSidebar').addEventListener('click', () => {
-  document.body.classList.toggle('show-sidebar');
+const fab = document.getElementById('toggleSidebar');
+fab.addEventListener('click', () => {
+  const open = document.body.classList.toggle('show-sidebar');
+  fab.setAttribute('aria-pressed', open ? 'true' : 'false');
 });
 
 // Ferme le tiroir si on clique dans le plateau
@@ -1658,9 +1661,8 @@ document.getElementById('board').addEventListener('click', () => {
   }
 });
 
-
 // --- Affichage de la version ---
-const BUILD = 'v0.7.9';
+const BUILD = 'v0.8.1';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
 
