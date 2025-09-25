@@ -272,17 +272,26 @@
     }
   }
     /* ── Barre de vie au-dessus des unités ─────────────────────────── */
+/* ── Barre de vie au-dessus des unités ─────────────────────────── */
 .hpbar {
-  position: absolute; left: 50%; top: -10px; transform: translateX(-50%);
-  width: 30px; height: 6px; border-radius: 4px; background: rgba(0,0,0,.25);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.7);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -28px); /* au-dessus du badge centré, reste dans le clip-path */
+  width: 30px;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(0,0,0,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+  border: 1px solid rgba(255,255,255,.7);
   z-index: 4;
 }
-.hpbar .hpfill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#9be15d,#00e3ae); width: 100%; }
-
-  /* Focus visible au clavier sur les cases hex */
-  .hex:focus { outline: 3px solid var(--select); outline-offset: -2px; }
-
+.hpbar .hpfill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg,#9be15d,#00e3ae);
+  width: 100%;
+}
 
 </style>
 </head>
