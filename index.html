@@ -12,7 +12,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="apple-mobile-web-app-title" content="War-ixel">
   <!-- iOS -->
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <!-- Si tu n'as pas icon-180.png, garde la ligne suivante à la place :
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   -->
@@ -264,13 +264,25 @@
   }
  
 
-/* Ajuste les safe areas quand l’app est installée (standalone) */
-@media (display-mode: standalone) {
-  .fab {
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    right:  calc(12px + env(safe-area-inset-right));
+  /* Ajuste les safe areas quand l’app est installée (standalone) */
+  @media (display-mode: standalone) {
+    .fab {
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      right:  calc(12px + env(safe-area-inset-right));
+    }
   }
+    /* ── Barre de vie au-dessus des unités ─────────────────────────── */
+.hpbar {
+  position: absolute; left: 50%; top: -10px; transform: translateX(-50%);
+  width: 30px; height: 6px; border-radius: 4px; background: rgba(0,0,0,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.7);
+  z-index: 4;
 }
+.hpbar .hpfill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#9be15d,#00e3ae); width: 100%; }
+
+  /* Focus visible au clavier sur les cases hex */
+  .hex:focus { outline: 3px solid var(--select); outline-offset: -2px; }
+
 
 </style>
 </head>
@@ -278,6 +290,7 @@
 <header>
   <div class="paper-chip">Tour: <b id="turnLabel">Joueur</b></div>
   <div class="paper-chip">Année: <b id="yearLabel">1</b></div>
+  <div class="paper-chip">Build: <b id="buildLabel"></b></div>
   <div class="controls">
     <button type="button" id="endTurn">Finir le tour</button>
     <button type="button" id="restart">Recommencer</button>
@@ -360,8 +373,10 @@
         <label style="min-width:42px;">Seed</label>
         <input id="seedInput" type="text" placeholder="aléatoire" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:8px;">
         <button type="button" id="diceSeed" title="Seed aléatoire">🎲</button>
+        <button type="button" id="copySeed" title="Copier la seed">📋</button>
         <span id="seedLabel" style="font-size:12px; opacity:.8; margin-left:8px;"></span>
       </div>
+
       <div class="sizes" style="margin-top:8px">
         <button type="button" data-size="small">Petit</button>
         <button type="button" data-size="medium">Moyen</button>
@@ -387,7 +402,63 @@ const UNITS={1:{key:1,name:'Fermier',cost:1,upkeep:0.5,move:3},2:{key:2,name:'Mi
 const SHIPS={sloop:{key:'sloop',name:'Sloop',cost:5,upkeep:2.5,move:3,water:'shallow',cap:1,hp:2,atk:1,masts:1},
              brig:{key:'brig',name:'Brigantin',cost:10,upkeep:5,move:2,water:'both',cap:2,hp:3,atk:1.5,masts:2},
              galleon:{key:'galleon',name:'Galion',cost:20,upkeep:10,move:1,water:'both',cap:3,hp:4,atk:2,masts:3}};
-             
+
+
+// ── HP par type ──────────────────────────────────────────────────
+function baseHP(type){ return type===1 ? 50 : (type===2 ? 100 : 150); }
+
+// Normalise un objet unité pour lui ajouter hp/hpMax si absent
+function ensureHP(u){
+  const lvl = u.level || 1;
+  const max = baseHP(u.type) * lvl;
+  u.hpMax = (typeof u.hpMax === 'number') ? u.hpMax : max;
+  u.hp    = (typeof u.hp    === 'number') ? u.hp    : max;
+  if (u.hpMax !== max){ u.hp = Math.round(u.hp * (max / u.hpMax)); u.hpMax = max; }
+  if (u.hp > u.hpMax) u.hp = u.hpMax;
+  return u;
+}
+
+// Dommages subis par l'attaquant en cas de victoire.
+function victoryDamage(attType, defType){
+  if (attType === defType) return { type: 'setToHalf' };
+  if (attType === 2 && defType === 1) return { type: 'flat', dmg: 10 }; // Milice > Fermier
+  if (attType === 3 && defType === 2) return { type: 'flat', dmg: 20 }; // Soldat > Milice
+  if (attType === 3 && defType === 1) return { type: 'flat', dmg: 10 }; // Soldat > Fermier
+  return { type: 'flat', dmg: 0 };
+}
+
+// Applique le malus de victoire à l'attaquant (toujours gagnant)
+function applyVictoryDamageToUnit(u, attType, defType){
+  ensureHP(u);
+  const rule = victoryDamage(attType, defType);
+  if (rule.type === 'setToHalf'){
+    u.hp = Math.max(1, Math.ceil(u.hpMax * 0.5));
+  } else {
+    u.hp = Math.max(1, u.hp - rule.dmg);
+  }
+}
+
+// Adjacent à une ville/tour alliée ?
+function isAdjacentToOwnStronghold(x,y,owner){
+  return neighbors(x,y).some(([nx,ny])=>{
+    const t = cell(nx,ny);
+    return t && (t.structure === 'city' || t.structure === 'tower') && t.owner === owner;
+  });
+}
+
+// Régénération : +20% PV max si adjacente à ville/tour alliée
+function healUnits(owner){
+  for (const c of S){
+    if (c.unit && c.unit.owner === owner){
+      if (isAdjacentToOwnStronghold(c.x, c.y, owner)){
+        ensureHP(c.unit);
+        const gain = Math.round(c.unit.hpMax * 0.2);
+        c.unit.hp = Math.min(c.unit.hpMax, c.unit.hp + gain);
+      }
+    }
+  }
+}
+
 const DEF_BONUS_CITY = 0.5;         // bonus défense si l'unité défend dans SA ville
 const GARRISON_UPKEEP_MULT = 0.5;   // entretien x0.5 pour une unité posée sur SA ville
 
@@ -484,7 +555,7 @@ function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
     });
     if (cand){
       const [ux,uy]=cand; const t=cell(ux,uy);
-      t.unit={owner:o,type:1,level:1,moved:true};
+      t.unit = ensureHP({ owner:o, type:1, level:1, moved:true });
       t.owner=o;
     }
     gold[o]=2;
@@ -758,7 +829,7 @@ function spawnUnit(x,y,u,moved=true){
   if (!c || c.ship) return false;
   const placeHere = (t)=>{ 
     if (t.unit || t.ship) return false;
-    t.unit = { owner:u.owner, type:u.type, level:u.level||1, moved };
+    t.unit = ensureHP({ owner:u.owner, type:u.type, level:u.level||1, moved });
     t.owner = u.owner;
     return true;
   };
@@ -790,10 +861,22 @@ function moveUnit(sx, sy, dx, dy, _viaReach=false){
 
   // Fusion alliée (même type)
   if (dst?.unit && !isEnemy(1, dst.unit.owner) && dst.unit.type === src.unit.type){
-    dst.unit.level = (dst.unit.level||1) + (src.unit.level||1);
-    dst.unit.moved = true;
-    src.unit = null;
-    dst.owner = 1;
+    ensureHP(src.unit); ensureHP(dst.unit);
+  const newLevel = (dst.unit.level||1) + (src.unit.level||1);
+  const maxPerUnit = baseHP(dst.unit.type);
+  const newMax = newLevel * maxPerUnit;
+
+  // somme des PV actuels des deux piles, bornée au max
+  const summedHP = Math.min(newMax, (dst.unit.hp||dst.unit.hpMax) + (src.unit.hp||src.unit.hpMax));
+
+  dst.unit.level = newLevel;
+  dst.unit.hpMax = newMax;
+  dst.unit.hp    = summedHP;
+  dst.unit.moved = true;
+
+  src.unit = null;
+  dst.owner = 1;
+
     addLog(`Fusion en ${dx},${dy}`, `Pile de ${UNITS[dst.unit.type].name} ×${dst.unit.level}`, 1);
     return;
   }
@@ -801,26 +884,38 @@ function moveUnit(sx, sy, dx, dy, _viaReach=false){
   // Combat contre ennemi sur la case
   if (dst?.unit && isEnemy(1, dst.unit.owner)){
     if (!canAnnex(1, dx, dy)){ addLog("Impossible d'annexer", "Il faut être adjacent à ton territoire.", 1); return; }
-    const attType = src.unit.type;
-    let att = src.unit.type;
-    let def = dst.unit.type;
-    if (dst.structure === 'city' && dst.owner === dst.unit.owner) def += DEF_BONUS_CITY;
-    const r = beats(att, def);
 
-    if (r === 1){
+    ensureHP(src.unit); ensureHP(dst.unit);
+
+    const attType = src.unit.type;
+    let defEff = dst.unit.type;
+
+  // Bonus défensif si le défenseur est dans SA ville
+  if (dst.structure === 'city' && dst.owner === dst.unit.owner) defEff += DEF_BONUS_CITY;
+
+  // Résolution : att > def => victoire ; att == def => victoire (perte 50%); att < def => défaite
+  if (attType > defEff){
+    // Attaquant gagne, applique son malus de victoire
+    applyVictoryDamageToUnit(src.unit, attType, dst.unit.type);
+    dst.unit = { ...src.unit, moved: true };
+    dst.owner = 1;
+    src.unit = null;
+    addLog(`Victoire en ${dx},${dy}`, `Ton ${unitName(attType)} l'emporte.`, 1);
+    } else if (attType === defEff){
+      // Égalité -> l'attaquant gagne mais tombe à 50% de ses PV max
+      src.unit.hp = Math.max(1, Math.ceil(src.unit.hpMax * 0.5));
       dst.unit = { ...src.unit, moved: true };
-      src.unit = null;
       dst.owner = 1;
-      addLog(`Victoire en ${dx},${dy}`, `Ton ${unitName(dst.unit.type)} l'emporte.`, 1);
-    } else if (r === -1){
       src.unit = null;
-      addLog(`Défaite en ${dx},${dy}`, `Ton ${unitName(attType)} perd le duel.`, 1);
+      addLog(`Victoire en ${dx},${dy}`, `Match de rang : tu gagnes mais -50% PV.`, 1);
     } else {
-      src.unit = null; dst.unit = null;
-      addLog(`Égalité en ${dx},${dy}`, `Les deux unités périssent.`, 1);
+      // Défaite de l'attaquant
+      src.unit = null;
+      addLog(`Défaite en ${dx},${dy}`, `Ton ${unitName(attType)} est détruit.`, 1);
     }
     return;
   }
+
 
   // Ville : capture/entrée
   if (dst.structure === 'city'){
@@ -852,20 +947,42 @@ function moveUnitAI(sx, sy, dx, dy, owner){
 
   // Fusion alliée (même type)
   if (dst?.unit && !isEnemy(owner, dst.unit.owner) && dst.unit.type === src.unit.type){
-    dst.unit.level = (dst.unit.level||1) + (src.unit.level||1);
-    dst.unit.moved = true; src.unit = null; dst.owner = owner;
+    ensureHP(src.unit); ensureHP(dst.unit);
+    const newLevel = (dst.unit.level||1) + (src.unit.level||1);
+    const maxPerUnit = baseHP(dst.unit.type);
+    const newMax = newLevel * maxPerUnit;
+    const summedHP = Math.min(newMax, (dst.unit.hp||dst.unit.hpMax) + (src.unit.hp||src.unit.hpMax));
+    dst.unit.level = newLevel;
+    dst.unit.hpMax = newMax;
+    dst.unit.hp    = summedHP;
+    dst.unit.moved = true;
+    src.unit = null;
+    dst.owner = owner;
     return;
   }
 
   // Combat
   if (dst?.unit && isEnemy(owner, dst.unit.owner)){
     if (!canAnnex(owner, dx, dy)) return;
-    let att = src.unit.type, def = dst.unit.type;
-    if (dst.structure === 'city' && dst.owner === dst.unit.owner) def += DEF_BONUS_CITY;
-    const r = beats(att, def);
-    if (r === 1){ dst.unit = { ...src.unit, moved:true }; src.unit = null; dst.owner = owner; }
-    else if (r === -1){ src.unit = null; }
-    else { src.unit = null; dst.unit = null; }
+
+    ensureHP(src.unit); ensureHP(dst.unit);
+    const attType = src.unit.type;
+    let defEff = dst.unit.type;
+    if (dst.structure === 'city' && dst.owner === dst.unit.owner) defEff += DEF_BONUS_CITY;
+
+    if (attType > defEff){
+      applyVictoryDamageToUnit(src.unit, attType, dst.unit.type);
+      dst.unit = { ...src.unit, moved:true };
+      dst.owner = owner;
+      src.unit = null;
+    } else if (attType === defEff){
+      src.unit.hp = Math.max(1, Math.ceil(src.unit.hpMax * 0.5));
+      dst.unit = { ...src.unit, moved:true };
+      dst.owner = owner;
+      src.unit = null;
+    } else {
+      src.unit = null;
+    }
     return;
   }
 
@@ -874,13 +991,16 @@ function moveUnitAI(sx, sy, dx, dy, owner){
     const wasEnemy = isEnemy(owner, dst.owner);
     if (wasEnemy && !canAnnex(owner, dx, dy)) return;
     if (wasEnemy) dst.owner = owner;
-    dst.unit = { ...src.unit, moved:true }; src.unit = null;
+    dst.unit = { ...src.unit, moved:true };
+    src.unit = null;
     return;
   }
 
   // Case normale
   if (dst.owner !== owner && !canAnnex(owner, dx, dy)) return;
-  dst.unit = { ...src.unit, moved:true }; dst.owner = owner; src.unit = null;
+  dst.unit = { ...src.unit, moved:true };
+  dst.owner = owner;
+  src.unit = null;
 }
 
 function moveShip(sx, sy, dx, dy){
@@ -898,17 +1018,33 @@ function moveShipAI(sx, sy, dx, dy, owner){
 }
 
 function tryUpgradeAtCity(x,y,toTypeMaybe){
-  const c=cell(x,y);
+  const c = cell(x,y);
   if(!c || c.structure!=='city' || c.owner!==1 || !c.unit || c.unit.owner!==1){
     addLog("Aucune unité à améliorer dans la ville.", null, 1);
     return;
   }
-  let to = toTypeMaybe || (c.unit.type===1?2:(c.unit.type===2?3:3));
-  if(c.unit.type===3){ addLog("Déjà au rang maximum.", null, 1); return; }
-  const cost=upgradeCost(c.unit.type,to);
-  if((gold[1]||0)<cost){ addLog("Or insuffisant pour l'amélioration",`Coût ${cost} or`,1); return; }
-  gold[1]-=cost; c.unit.type=to; c.unit.moved=true;
-  addLog(`Amélioration: ${UNITS[to].name}`,`En ${x},${y} (coût ${cost})`,1);
+  const from = c.unit.type;
+  const to   = toTypeMaybe || (from===1?2:(from===2?3:3));
+  if (from===3){ addLog("Déjà au rang maximum.", null, 1); return; }
+
+  const cost = upgradeCost(from, to);
+  if ((gold[1]||0) < cost){
+    addLog("Pas assez d'or", `Coût ${cost} or`, 1);
+    return;
+  }
+
+  const oldMax = ensureHP(c.unit).hpMax;
+  const pct    = c.unit.hp / oldMax;
+
+  gold[1] -= cost;
+  c.unit.type  = to;
+  c.unit.moved = true;
+
+  const newMax = baseHP(c.unit.type) * (c.unit.level || 1);
+  c.unit.hpMax = newMax;
+  c.unit.hp    = Math.max(1, Math.round(newMax * pct));
+
+  addLog(`Amélioration: ${UNITS[to].name}`, `En ${x},${y} (coût ${cost})`, 1);
   render();
 }
 
@@ -1268,7 +1404,14 @@ function render(){
     d.style.width = HEX_W+'px'; d.style.height = HEX_H+'px';
     d.style.clipPath='polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
     d.dataset.x = x; d.dataset.y = y;
-    d.addEventListener('click', onCellClick);
+    d.addEventListener('click', onCellClick);// rendre la case focusable + action avec Entrée/Espace
+    d.tabIndex = 0;
+    d.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' '){
+        onCellClick({ currentTarget: d });
+        ev.preventDefault();
+      }
+    });
     const isLand = (c.terrain === 'land' || c.terrain === 'forest');
     const hasFrontier = isLand && neighbors(x,y).some(([nx,ny])=>{
       const n = cell(nx,ny);
@@ -1295,11 +1438,27 @@ function render(){
       t.appendChild(svgRook()); d.appendChild(t);
     }
     if (c.unit && !hidden){
-      const u=document.createElement('div'); u.className='badge';
-      u.style.background=ownerColor(c.unit.owner);
+      ensureHP(c.unit);
+
+      // Badge
+      const u = document.createElement('div');
+      u.className = 'badge';
+      u.style.background = ownerColor(c.unit.owner);
       if (c.unit.owner===1 && c.terrain==='forest') u.classList.add('camo');
-      u.appendChild(svgIconUnit(c.unit.type)); d.appendChild(u);
+      u.appendChild(svgIconUnit(c.unit.type));
+      d.appendChild(u);
+
+      // Barre de vie
+      const hpWrap = document.createElement('div');
+      hpWrap.className = 'hpbar';
+      const hpFill = document.createElement('div');
+      hpFill.className = 'hpfill';
+      const ratio = Math.max(0, Math.min(1, c.unit.hp / c.unit.hpMax));
+      hpFill.style.width = Math.round(ratio * 100) + '%';
+      hpWrap.appendChild(hpFill);
+      d.appendChild(hpWrap);
     }
+
     if (c.ship){
       const s=document.createElement('div'); s.className='ship';
       s.style.background=ownerColor(c.ship.owner);
@@ -1414,7 +1573,12 @@ function endTurn(){
   recalcMoved(false); selected=null;
   turn++;
   if (turn > TOTAL_PLAYERS) {  turn = 1;  YEAR++; }
+
+  // Régénération au début du tour du nouveau joueur (Joueur ou IA)
+  healUnits(turn);
+
   render(); checkVictory();
+
   if (turn !== 1){
     setTimeout(()=>aiTurn(turn),250);
   } else {
@@ -1423,11 +1587,28 @@ function endTurn(){
   }
 }
 
+// Mini-modal de fin (victoire / défaite)
+function showEndModal(txt){
+  const m = document.getElementById('endModal');
+  const t = document.getElementById('end-title');
+  t.textContent = txt;
+  m.classList.add('show');
+  document.getElementById('endClose')?.focus();
+}
+document.getElementById('endClose')?.addEventListener('click', () => {
+  document.getElementById('endModal')?.classList.remove('show');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape'){
+    document.getElementById('endModal')?.classList.remove('show');
+  }
+});
+
 function checkVictory(){
   const aiAlive=S.some(c=>(c.unit&&c.unit.owner>1)||(c.structure==='city'&&c.owner>1));
   const playerAlive=S.some(c=>(c.unit&&c.unit.owner===1)||(c.structure==='city'&&c.owner===1));
-  if(!aiAlive) setTimeout(()=>alert("Victoire !"),60);
-  if(!playerAlive) setTimeout(()=>alert("Défaite…"),60);
+  if(!aiAlive) setTimeout(()=>showEndModal("Victoire !"),60);
+  if(!playerAlive) setTimeout(()=>showEndModal("Défaite…"),60);
 }
 
 function nearestEnemyOrCity(x,y,owner){
@@ -1523,13 +1704,20 @@ function aiTurn(owner){
       const [nx,ny] = opts[0]; moveShipAI(b.x, b.y, nx, ny, owner);
     }
   }
+
   render(); checkVictory(); endTurn();
 }
 
 function randomSeed(){ return (Math.random()*0xFFFFFFFF)>>>0; }
 
 function hideStart(){ document.getElementById('start').classList.remove('show'); }
-function showStart(){ document.getElementById('start').classList.add('show'); }
+function showStart(){
+  const m = document.getElementById('start');
+  m.classList.add('show');
+  // focus le premier bouton de taille
+  const firstBtn = m.querySelector('.sizes [data-size]');
+  firstBtn?.focus();
+}
 
 function startGame(sizeKey){
   CURRENT_SIZE = sizeKey;
@@ -1565,6 +1753,19 @@ function initStartUI(){
     const s = randomSeed();
     document.getElementById('seedInput').value = '0x'+s.toString(16);
     setSeed(s);
+  }
+
+  const btnCopy = document.getElementById('copySeed');
+  if (btnCopy){
+    btnCopy.onclick = () => {
+      const input = document.getElementById('seedInput');
+      const label = document.getElementById('seedLabel');
+      const val = (input?.value.trim()) || (label?.textContent.trim());
+      if (!val) return;
+      navigator.clipboard?.writeText(val);
+    };
+  }
+
   };
 
   document.querySelectorAll('#start .sizes [data-size]').forEach(btn=>{
@@ -1654,6 +1855,14 @@ fab.addEventListener('click', () => {
   fab.setAttribute('aria-pressed', open ? 'true' : 'false');
 });
 
+// Fermer le tiroir avec la touche Échap
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('show-sidebar')){
+    document.body.classList.remove('show-sidebar');
+    document.getElementById('toggleSidebar')?.setAttribute('aria-pressed','false');
+  }
+});
+
 // Ferme le tiroir si on clique dans le plateau
 document.getElementById('board').addEventListener('click', () => {
   if (document.body.classList.contains('show-sidebar')) {
@@ -1662,7 +1871,7 @@ document.getElementById('board').addEventListener('click', () => {
 });
 
 // --- Affichage de la version ---
-const BUILD = 'v0.8.1';
+const BUILD = 'v0.8.2';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
 
@@ -1678,5 +1887,11 @@ syncHeadH();
 
 })(); // fin de l'IIFE
 </script>
+  <div id="endModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="end-title">
+    <div class="card">
+      <h2 id="end-title"></h2>
+      <button type="button" id="endClose">OK</button>
+    </div>
+  </div>
 </body>
 </html>
