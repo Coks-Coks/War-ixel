@@ -1762,6 +1762,30 @@ function initStartUI(){
     const s = randomSeed();
     document.getElementById('seedInput').value = '0x'+s.toString(16);
     setSeed(s);
+  };
+
+  const btnCopy = document.getElementById('copySeed');
+  if (btnCopy){
+    btnCopy.onclick = () => {
+      const input = document.getElementById('seedInput');
+      const label = document.getElementById('seedLabel');
+      const val = (input?.value.trim()) || (label?.textContent.trim());
+      if (!val) return;
+      navigator.clipboard?.writeText(val);
+    };
+  }
+} // ← fin NORMALE de la fonction (pas de "};" en plus ici)
+
+// Ces lignes doivent rester *en dehors* de la fonction :
+document.querySelectorAll('#start .sizes [data-size]').forEach(btn=>{
+  btn.onclick = ()=> startGame(btn.dataset.size);
+});
+
+
+  document.getElementById('diceSeed').onclick=()=>{
+    const s = randomSeed();
+    document.getElementById('seedInput').value = '0x'+s.toString(16);
+    setSeed(s);
   }
 
   const btnCopy = document.getElementById('copySeed');
