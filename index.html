@@ -564,7 +564,7 @@ function genMap(sizeKey, aiCount=1, allied=true, difficulty=2){
     });
     if (cand){
       const [ux,uy]=cand; const t=cell(ux,uy);
-      t.unit = ensureHP({ owner:o, type:1, level:1, moved:true });
+      t.unit = ensureHP({ owner:o, type:1, level:1, moved:false });
       t.owner=o;
     }
     gold[o]=2;
@@ -1776,35 +1776,6 @@ function initStartUI(){
   }
 } // ← fin NORMALE de la fonction (pas de "};" en plus ici)
 
-// Ces lignes doivent rester *en dehors* de la fonction :
-document.querySelectorAll('#start .sizes [data-size]').forEach(btn=>{
-  btn.onclick = ()=> startGame(btn.dataset.size);
-});
-
-
-  document.getElementById('diceSeed').onclick=()=>{
-    const s = randomSeed();
-    document.getElementById('seedInput').value = '0x'+s.toString(16);
-    setSeed(s);
-  }
-
-  const btnCopy = document.getElementById('copySeed');
-  if (btnCopy){
-    btnCopy.onclick = () => {
-      const input = document.getElementById('seedInput');
-      const label = document.getElementById('seedLabel');
-      const val = (input?.value.trim()) || (label?.textContent.trim());
-      if (!val) return;
-      navigator.clipboard?.writeText(val);
-    };
-  }
-
-  };
-
-  document.querySelectorAll('#start .sizes [data-size]').forEach(btn=>{
-    btn.onclick = ()=> startGame(btn.dataset.size);
-  });
-
   document.getElementById('zoomIn').onclick = ()=>{
     zoom = Math.min(MAX_ZOOM, +(zoom+ZOOM_STEP).toFixed(2)); applyView();
   };
@@ -1880,6 +1851,22 @@ if ('PointerEvent' in window){
 initStartUI();
 showStart();
 
+// Branche les boutons de taille -> lance la partie
+document.querySelectorAll('.sizes [data-size]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const size = btn.getAttribute('data-size');
+    startGame(size);
+  });
+  // accessibilité : Enter/Space
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const size = btn.getAttribute('data-size');
+      startGame(size);
+    }
+  });
+});
+
 // Bouton tiroir paysage mobile
 const fab = document.getElementById('toggleSidebar');
 fab.addEventListener('click', () => {
@@ -1903,7 +1890,7 @@ document.getElementById('board').addEventListener('click', () => {
 });
 
 // --- Affichage de la version ---
-const BUILD = 'v0.8.2';
+const BUILD = 'v0.8.6';
 const el = document.getElementById('buildLabel');
 if (el) el.textContent = BUILD;
 
